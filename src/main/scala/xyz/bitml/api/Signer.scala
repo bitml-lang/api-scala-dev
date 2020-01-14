@@ -1,6 +1,8 @@
+package xyz.bitml.api
+
 import fr.acinq.bitcoin
-import fr.acinq.bitcoin.{Crypto, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSHDATA, Satoshi, Script, ScriptWitness, SigVersion, Transaction}
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
+import fr.acinq.bitcoin.{Crypto, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSHDATA, Satoshi, Script, ScriptWitness, SigVersion, Transaction}
 import scodec.bits.ByteVector
 
 class Signer {
