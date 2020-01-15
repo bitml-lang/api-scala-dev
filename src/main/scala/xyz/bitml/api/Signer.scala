@@ -14,8 +14,8 @@ class Signer {
 
   // Generate signature from a P2SH input script.
   def signP2SH(priv : PrivateKey, toSign : Transaction, inputIndex : Int, amt : Satoshi) : ByteVector = {
-    // Assume P2SH redeem script is the very last chunk in our half finished input tx
-    val redeemScript = Script.write(Script.parse(toSign.txIn(inputIndex).signatureScript).last :: Nil)
+    // Assume P2SH redeem script is the very last chunk in our half finished input tx. Remember to remove the PUSHDATA op!
+    val redeemScript = Script.write(Seq(Script.parse(toSign.txIn(inputIndex).signatureScript).last)).drop(1)
     Transaction.signInput(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_BASE, priv)
   }
 
