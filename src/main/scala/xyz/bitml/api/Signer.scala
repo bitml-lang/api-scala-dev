@@ -31,6 +31,10 @@ class Signer {
     Transaction.signInput(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_WITNESS_V0, priv)
   }
 
+  def injectAt(value_in: ByteVector,index : Int,  dest: Seq[ByteVector]) : Seq[ByteVector] = {
+    (dest.dropRight(dest.length - index) :+ value_in )++ dest.drop(index+1)
+  }
+
   // Generate standard P2PKH redeem script from expected public key
   def genP2PKHDummy(pub : PublicKey) : ByteVector = {
     val pkh = Crypto.hash160(pub.value)
