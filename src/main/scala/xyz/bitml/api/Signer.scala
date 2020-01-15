@@ -32,7 +32,7 @@ class Signer {
   }
 
   def injectAt(value_in: ByteVector,index : Int,  dest: Seq[ByteVector]) : Seq[ByteVector] = {
-    (dest.dropRight(dest.length - index) :+ value_in )++ dest.drop(index+1)
+    dest.updated(index, value_in)
   }
 
   // Generate standard P2PKH redeem script from expected public key

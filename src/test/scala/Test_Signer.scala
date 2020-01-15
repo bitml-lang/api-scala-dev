@@ -1,4 +1,3 @@
-import fr.acinq.bitcoin
 import fr.acinq.bitcoin._
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Base58Check, OutPoint, Satoshi, Transaction, TxIn, TxOut}
