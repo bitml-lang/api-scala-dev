@@ -132,6 +132,9 @@ class Test_Signer extends AnyFunSuite {
         lockTime = 0
       )
 
+      // Dummy transaction is allowed to have OP_0 placeholders.
+      Transaction.correctlySpends(tmp, Seq(tx2), ScriptFlags.SCRIPT_VERIFY_STRICTENC)
+
       val signer = new Signer()
       val sig2_test = signer.signP2SH(priv2, tmp, 0, tx2.txOut(0).amount)
       val sig3_test = signer.signP2SH(priv3, tmp, 0, tx2.txOut(0).amount)

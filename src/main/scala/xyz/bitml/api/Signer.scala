@@ -2,10 +2,33 @@ package xyz.bitml.api
 
 import fr.acinq.bitcoin
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
-import fr.acinq.bitcoin.{Crypto, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSHDATA, Satoshi, Script, ScriptWitness, SigVersion, Transaction}
+import fr.acinq.bitcoin.{Crypto, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSHDATA, Satoshi, Script, ScriptElt, ScriptWitness, SigVersion, Transaction}
 import scodec.bits.ByteVector
 
 class Signer {
+
+  // Generate and fill signature into ChunkEntry object if we have the correct private key.
+  def fillSig(txData : Transaction, inputIndex : Int, chunkEntry: ChunkEntry, identity : PrivateKey) : Boolean = {
+    if (chunkEntry.owner.isEmpty || (chunkEntry.owner.get != identity.publicKey)){
+      false
+    } else {
+      val produced = chunkEntry.chunkType match {
+        case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, Satoshi(0))
+        case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, Satoshi(0))
+        case ChunkType.SIG_P2WPKH => signP2WPKH(identity, txData, inputIndex, Satoshi(0))
+        case ChunkType.SIG_P2WSH => signP2WSH(identity, txData, inputIndex, Satoshi(0))
+        case _ => return false
+      }
+      // Insert into original object
+      chunkEntry.data = produced
+      true
+    }
+  }
+
+  // Insert ByteVector as pushdata into script at chunk #index.
+  def insertPushdataIn(script: Seq[ScriptElt], data: ByteVector, index : Int): Seq[ScriptElt] = {
+    script.updated(index, OP_PUSHDATA(data))
+  }
 
   // Generate signature from "dummy" P2PKH redeemScript
   def signP2PKH(priv : PrivateKey, toSign : Transaction, inputIndex : Int, amt : Satoshi) : ByteVector = {
@@ -31,6 +54,7 @@ class Signer {
     Transaction.signInput(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_WITNESS_V0, priv)
   }
 
+  // Generic substitution in ByteVector sequence
   def injectAt(value_in: ByteVector,index : Int,  dest: Seq[ByteVector]) : Seq[ByteVector] = {
     dest.updated(index, value_in)
   }
