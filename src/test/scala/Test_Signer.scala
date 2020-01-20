@@ -1,7 +1,7 @@
 import fr.acinq.bitcoin._
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Base58Check, OutPoint, Satoshi, Transaction, TxIn, TxOut}
-import xyz.bitml.api.Signer
+import xyz.bitml.api.{ChunkEntry, ChunkType, Signer}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 
@@ -258,5 +258,9 @@ class Test_Signer extends AnyFunSuite {
     assert(signer.injectAt(pretendSig, 1, startingSeq) == Seq(ByteVector.fromInt(1), ByteVector.fromValidHex("3045AAAAAAAAAAAA"), ByteVector.fromInt(3)))
     // The signer produces a copy and does not directly overwrite the starting data.
     assert(startingSeq == Seq(ByteVector.fromInt(1), ByteVector.fromInt(2), ByteVector.fromInt(3)))
+  }
+
+  test ("") {
+
   }
 }

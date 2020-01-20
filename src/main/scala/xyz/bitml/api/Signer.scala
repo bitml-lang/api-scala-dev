@@ -8,15 +8,15 @@ import scodec.bits.ByteVector
 class Signer {
 
   // Generate and fill signature into ChunkEntry object if we have the correct private key.
-  def fillSig(txData : Transaction, inputIndex : Int, chunkEntry: ChunkEntry, identity : PrivateKey) : Boolean = {
+  def fillSig(txData : Transaction, inputIndex : Int, chunkEntry: ChunkEntry, identity : PrivateKey, amt : Option[Satoshi]) : Boolean = {
     if (chunkEntry.owner.isEmpty || (chunkEntry.owner.get != identity.publicKey)){
       false
     } else {
       val produced = chunkEntry.chunkType match {
-        case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, Satoshi(0))
-        case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, Satoshi(0))
-        case ChunkType.SIG_P2WPKH => signP2WPKH(identity, txData, inputIndex, Satoshi(0))
-        case ChunkType.SIG_P2WSH => signP2WSH(identity, txData, inputIndex, Satoshi(0))
+        case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
+        case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
+        case ChunkType.SIG_P2WPKH => signP2WPKH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
+        case ChunkType.SIG_P2WSH => signP2WSH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
         case _ => return false
       }
       // Insert into original object
@@ -25,14 +25,29 @@ class Signer {
     }
   }
 
+  // Run through TxEntry, looking for chunks that can be signed with the provided private key
+  def fillEntry(txEntry: TxEntry, identity: PrivateKey): Unit = {
+    println("Browsing through chunks in transaction "+ txEntry.name)
+    val signer = new Signer()
+
+    for (indexChunks <- txEntry.chunks) {
+      val txIndex = indexChunks._1
+      for (chunkEntry <- indexChunks._2) {
+        signer.fillSig(txEntry.data, txIndex, chunkEntry, identity, Option.empty)
+      }
+    }
+
+  }
+
   // Insert ByteVector as pushdata into script at chunk #index.
-  def insertPushdataIn(script: Seq[ScriptElt], data: ByteVector, index : Int): Seq[ScriptElt] = {
+  def injectPushdataIn(script: Seq[ScriptElt], data: ByteVector, index : Int): Seq[ScriptElt] = {
     script.updated(index, OP_PUSHDATA(data))
   }
 
   // Generate signature from "dummy" P2PKH redeemScript
   def signP2PKH(priv : PrivateKey, toSign : Transaction, inputIndex : Int, amt : Satoshi) : ByteVector = {
-    Transaction.signInput(toSign, inputIndex, genP2PKHDummy(priv.publicKey), bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_BASE, priv)
+    val redeemScript = genP2PKHDummy(priv.publicKey)
+    Transaction.signInput(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_BASE, priv)
   }
 
   // Generate signature from a P2SH input script.
