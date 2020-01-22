@@ -1,9 +1,11 @@
 import fr.acinq.bitcoin._
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Base58Check, OutPoint, Satoshi, Transaction, TxIn, TxOut}
-import xyz.bitml.api.{ChunkEntry, ChunkType, Signer}
+import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry, TxStorage}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
+
+import scala.collection.immutable.HashMap
 
 class Test_Signer extends AnyFunSuite {
   // From bitcoin-lib's p2pkh example
@@ -260,7 +262,85 @@ class Test_Signer extends AnyFunSuite {
     assert(startingSeq == Seq(ByteVector.fromInt(1), ByteVector.fromInt(2), ByteVector.fromInt(3)))
   }
 
-  test ("") {
+  test ("ChunkEntry and TxEntry tests based on the P2WSH test above.") {
+    val priv1 = PrivateKey.fromBase58("QRY5zPUH6tWhQr2NwFXNpMbiLQq9u2ztcSZ6RwMPjyKv36rHP2xT", Base58.Prefix.SecretKeySegnet)._1
+    val pub1 = priv1.publicKey
+    val address1 = Base58Check.encode(Base58.Prefix.PubkeyAddressSegnet, Crypto.hash160(pub1.value))
 
+    val pversion = Protocol.PROTOCOL_VERSION
+
+    assert(address1 == "D6YX7dpieYu8j1bV8B4RgksNmDk3sNJ4Ap")
+
+    val priv2 = PrivateKey.fromBase58("QUpr3G5ia7K7txSq5k7QpgTfNy33iTQWb1nAUgb77xFesn89xsoJ", Base58.Prefix.SecretKeySegnet)._1
+    val pub2 = priv2.publicKey
+
+    val priv3 = PrivateKey.fromBase58("QX3AN7b3WCAFaiCvAS2UD7HJZBsFU6r5shjfogJu55411hAF3BVx", Base58.Prefix.SecretKeySegnet)._1
+    val pub3 = priv3.publicKey
+
+    // this is a standard tx that sends 0.5 BTC to D6YX7dpieYu8j1bV8B4RgksNmDk3sNJ4Ap
+    val tx1 = Transaction.read("010000000240b4f27534e9d5529e67e52619c7addc88eff64c8e7afc9b41afe9a01c6e2aea010000006b48304502210091aed7fe956c4b2471778bfef5a323a96fee21ec6d73a9b7f363beaad135c5f302207f63b0ffc08fd905cdb87b109416c2d6d8ec56ca25dd52529c931aa1154277f30121037cb5789f1ca6c640b6d423ef71390e0b002da81db8fad4466bf6c2fdfb79a24cfeffffff6e21b8c625d9955e48de0a6bbcd57b03624620a93536ddacabc19d024c330f04010000006a47304402203fb779df3ae2bf8404e6d89f83af3adee0d0a0c4ec5a01a1e88b3aa4313df6490220608177ca82cf4f7da9820a8e8bf4266ccece9eb004e73926e414296d0635d7c1012102edc343e7c422e94cca4c2a87a4f7ce54594c1b68682bbeefa130295e471ac019feffffff0280f0fa02000000001976a9140f66351d05269952302a607b4d6fb69517387a9788ace06d9800000000001976a91457572594090c298721e8dddcec3ac1ec593c6dcc88ac205a0000", pversion)
+
+    // now let's create a simple tx that spends tx1 and send 0.5 BTC to a P2WSH output
+    val tx2 = {
+      // our script is a 2-of-2 multisig script
+      val redeemScript = Script.createMultiSigMofN(2, Seq(pub2, pub3))
+      val tmp = Transaction(version = 1,
+        txIn = TxIn(OutPoint(tx1.hash, 0), sequence = 0xffffffffL, signatureScript = ByteVector.empty) :: Nil,
+        txOut = TxOut(0.49 btc, Script.pay2wsh(redeemScript)) :: Nil,
+        lockTime = 0
+      )
+      val sig = Transaction.signInput(tmp, 0, tx1.txOut(0).publicKeyScript, SIGHASH_ALL, 0 sat, SigVersion.SIGVERSION_BASE, priv1)
+      tmp.updateSigScript(0, OP_PUSHDATA(sig) :: OP_PUSHDATA(priv1.publicKey) :: Nil)
+      //Transaction.sign(tmp, Seq(SignData(tx1.txOut(0).publicKeyScript, priv1)))
+    }
+    Transaction.correctlySpends(tx2, Seq(tx1), ScriptFlags.STANDARD_SCRIPT_VERIFY_FLAGS)
+
+    // and now we create a segwit tx that spends the P2WSH output
+    val tx3 = {
+      var tmp: Transaction = Transaction(version = 1,
+        txIn = TxIn(OutPoint(tx2.hash, 0), sequence = 0xffffffffL, signatureScript = ByteVector.empty) :: Nil,
+        txOut = TxOut(0.48 btc, Script.pay2wpkh(pub1)) :: Nil,
+        lockTime = 0
+      )
+      val pubKeyScript = Script.write(Script.createMultiSigMofN(2, Seq(pub2, pub3)))
+
+      // Create and inject witness script into temporary tx
+      val dummywit = ScriptWitness(Seq(ByteVector.empty, ByteVector.empty, ByteVector.empty, pubKeyScript))
+      tmp = tmp.updateWitness(0, dummywit)
+
+      // Save Transaction object under "TEMP"
+      val mockDb = new TxStorage(inMemoryDb = new HashMap[String, Transaction]())
+      mockDb.save("TEMP", tmp)
+
+      val signer = new Signer()
+
+      // Build chunk data structure.
+      val chunks = Seq(
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
+      val indexData = new IndexEntry(tx2.txOut(0).amount, chunks)
+
+      val txData = new TxEntry(name = "TEMP", indexData = HashMap(0 -> indexData))
+
+      // Fill in signature for priv2
+      signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv2)
+      println("SIG2: " +txData.indexData(0).chunkData(0).data)
+
+      // Fill in signature for priv3
+      signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv3)
+      println("SIG3: "+txData.indexData(0).chunkData(1).data)
+
+      // Build the correct witness stack. This can be automated with all the info in chunkEntry, but for now we'll do it here.
+      // Because the witness stack is not a sequence of ScriptElt but of regular ByteVectors, we'll use the ByteVector method.
+      var witStack = tmp.txIn(0).witness.stack
+      for(chunk <- chunks) {
+        witStack = signer.injectAt(chunk.data, chunk.chunkIndex, witStack)
+      }
+      val witness = ScriptWitness(witStack)
+
+      tmp.updateWitness(0, witness)
+    }
+
+    Transaction.correctlySpends(tx3, Seq(tx2), ScriptFlags.STANDARD_SCRIPT_VERIFY_FLAGS)
   }
 }

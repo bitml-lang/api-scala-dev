@@ -12,6 +12,7 @@ class Signer {
     if (chunkEntry.owner.isEmpty || (chunkEntry.owner.get != identity.publicKey)){
       false
     } else {
+      println("Signature "+chunkEntry.chunkIndex+" can be filled by "+identity.publicKey)
       val produced = chunkEntry.chunkType match {
         case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
         case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
@@ -30,10 +31,10 @@ class Signer {
     println("Browsing through chunks in transaction "+ txEntry.name)
     val signer = new Signer()
 
-    for (indexChunks <- txEntry.chunks) {
+    for (indexChunks <- txEntry.indexData) {
       val txIndex = indexChunks._1
-      for (chunkEntry <- indexChunks._2) {
-        signer.fillSig(txData, txIndex, chunkEntry, identity, Option.empty)
+      for (chunkEntry <- indexChunks._2.chunkData) {
+        signer.fillSig(txData, txIndex, chunkEntry, identity, Option(indexChunks._2.amt))
       }
     }
 

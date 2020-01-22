@@ -2,7 +2,7 @@ package xyz.bitml.api
 
 import fr.acinq.bitcoin.Transaction
 
-class TxEntry (val name : String, val chunks : Map[Int, Seq[ChunkEntry]]){
+class TxEntry (val name : String, val indexData : Map[Int, IndexEntry]){
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[TxEntry]
 
@@ -10,12 +10,12 @@ class TxEntry (val name : String, val chunks : Map[Int, Seq[ChunkEntry]]){
     case that: TxEntry =>
       (that canEqual this) &&
         name == that.name &&
-        chunks == that.chunks
+        indexData == that.indexData
     case _ => false
   }
 
   override def hashCode(): Int = {
-    val state = Seq(name, chunks)
+    val state = Seq(name, indexData)
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 }
