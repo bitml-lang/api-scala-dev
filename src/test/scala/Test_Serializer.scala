@@ -4,7 +4,7 @@ import org.json4s.Formats
 import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ByteVectorSerializer, ChunkEntry, ChunkType, IndexEntry, Serializer, TxEntry, TxStorage}
+import xyz.bitml.api.{ByteVectorSerializer, ChunkEntry, ChunkType, IndexEntry, SatoshiSerializer, Serializer, TxEntry, TxStorage}
 
 import scala.collection.immutable.HashMap
 
@@ -17,6 +17,14 @@ class Test_Serializer extends AnyFunSuite {
     implicit val formats: Formats = org.json4s.DefaultFormats + new ByteVectorSerializer()
     val resultCheck = Serialization.read[ByteVector](Serialization.write(testVector))
     assert(testVector.equals(resultCheck))
+  }
+
+  test ("Serialization and deserialization of Satoshi with custom serializer") {
+    val testSat = Satoshi(1000)
+
+    implicit val formats: Formats = org.json4s.DefaultFormats + new SatoshiSerializer()
+    val resultCheck = Serialization.read[Satoshi](Serialization.write(testSat))
+    assert(testSat.equals(resultCheck))
   }
 
   test ("Serialization/Deserialization of TxEntry without any chunk data.") {
