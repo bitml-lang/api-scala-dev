@@ -5,7 +5,7 @@ import org.json4s.native.Serialization
 
 class Serializer {
 
-  implicit val formats: Formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(ChunkType)
+  implicit val formats: Formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(ChunkType) + new ByteVectorSerializer()
 
   def serializeTxEntry(entry: TxEntry): String = {
     Serialization.write(entry)

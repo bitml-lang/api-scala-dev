@@ -26,14 +26,14 @@ class Signer {
   }
 
   // Run through TxEntry, looking for chunks that can be signed with the provided private key
-  def fillEntry(txEntry: TxEntry, identity: PrivateKey): Unit = {
+  def fillEntry(txData: Transaction, txEntry: TxEntry, identity: PrivateKey): Unit = {
     println("Browsing through chunks in transaction "+ txEntry.name)
     val signer = new Signer()
 
     for (indexChunks <- txEntry.chunks) {
       val txIndex = indexChunks._1
       for (chunkEntry <- indexChunks._2) {
-        signer.fillSig(txEntry.data, txIndex, chunkEntry, identity, Option.empty)
+        signer.fillSig(txData, txIndex, chunkEntry, identity, Option.empty)
       }
     }
 
