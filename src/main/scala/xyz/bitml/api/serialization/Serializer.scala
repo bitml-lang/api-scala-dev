@@ -1,7 +1,8 @@
-package xyz.bitml.api
+package xyz.bitml.api.serialization
 
 import org.json4s.Formats
 import org.json4s.native.Serialization
+import xyz.bitml.api.{ChunkType, TxEntry}
 
 class Serializer {
 

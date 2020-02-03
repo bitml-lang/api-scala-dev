@@ -1,9 +1,10 @@
 import fr.acinq.bitcoin._
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Base58Check, OutPoint, Satoshi, Transaction, TxIn, TxOut}
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry, TxStorage}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
+import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry}
+import xyz.bitml.api.persistence.TxStorage
 
 import scala.collection.immutable.HashMap
 

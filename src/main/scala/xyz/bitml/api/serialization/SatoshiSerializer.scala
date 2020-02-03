@@ -1,4 +1,4 @@
-package xyz.bitml.api
+package xyz.bitml.api.serialization
 
 import fr.acinq.bitcoin.Satoshi
 import org.json4s.CustomSerializer

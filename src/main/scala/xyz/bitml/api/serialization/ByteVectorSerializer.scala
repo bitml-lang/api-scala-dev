@@ -1,4 +1,4 @@
-package xyz.bitml.api
+package xyz.bitml.api.serialization
 
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST.{JArray, JField, JInt, JObject}

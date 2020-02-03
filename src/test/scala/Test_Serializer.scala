@@ -4,7 +4,9 @@ import org.json4s.Formats
 import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ByteVectorSerializer, ChunkEntry, ChunkType, IndexEntry, SatoshiSerializer, Serializer, TxEntry, TxStorage}
+import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, TxEntry}
+import xyz.bitml.api.persistence.TxStorage
+import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer}
 
 import scala.collection.immutable.HashMap
 
