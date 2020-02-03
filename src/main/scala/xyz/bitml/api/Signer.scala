@@ -25,7 +25,6 @@ class Signer {
       true
     }
   }
-
   // Run through TxEntry, looking for chunks that can be signed with the provided private key
   def fillEntry(txData: Transaction, txEntry: TxEntry, identity: PrivateKey): Unit = {
     println("Browsing through chunks in transaction "+ txEntry.name)

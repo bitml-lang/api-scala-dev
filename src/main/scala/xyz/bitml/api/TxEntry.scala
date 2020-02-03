@@ -1,7 +1,5 @@
 package xyz.bitml.api
 
-import fr.acinq.bitcoin.Transaction
-
 class TxEntry (val name : String, val indexData : Map[Int, IndexEntry]){
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[TxEntry]
