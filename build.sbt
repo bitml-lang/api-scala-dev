@@ -11,5 +11,6 @@ libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.7"
 libraryDependencies += "org.json4s" %% "json4s-ext" % "3.6.7"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.29"
 libraryDependencies += "com.typesafe.akka" %% "akka-remote" % "2.5.29"
+libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.5.29" % Test
 
 
