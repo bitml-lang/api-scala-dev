@@ -34,7 +34,7 @@ class Test_Network extends AnyFunSuite {
     val addrA = nodeA.path.address // Local address A
     println(addrA)
 
-    val remoteEndpointA =  new Address(protocol = "akka.tcp", system = "TestA", host = "127.0.0.1", port = 5150)
+    val remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
 
     // Setup network B
     val configFileB = getClass.getClassLoader.
@@ -61,9 +61,9 @@ class Test_Network extends AnyFunSuite {
 
     // Heartbeat() is asynchronous. This is hard to test, but it will show up on the debug log after a certain timeout.
     nodeB ! Heartbeat(remoteEndpointA.toString)
-    Thread.sleep(2000)
+    Thread.sleep(200)
     // the debug log should have a few lines about message serialization and shipping back and forth,
-    // then a Pong() "Heartbeat..." message with akka.tcp://TestA@127.0.0.1:5150/user/HeartbeatNode... as sender.
+    // then a Pong() "Heartbeat..." message with akka://TestA@127.0.0.1:5150/user/HeartbeatNode... as sender.
     // TODO: find better way to test these. Maybe return the string instead of printing from Node.receive()?
     println("TEST END")
 
