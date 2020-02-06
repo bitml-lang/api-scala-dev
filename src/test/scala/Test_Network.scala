@@ -61,7 +61,7 @@ class Test_Network extends AnyFunSuite {
 
     // Heartbeat() is asynchronous. This is hard to test, but it will show up on the debug log after a certain timeout.
     nodeB ! Heartbeat(remoteEndpointA.toString)
-    Thread.sleep(200)
+    Thread.sleep(1000)
     // the debug log should have a few lines about message serialization and shipping back and forth,
     // then a Pong() "Heartbeat..." message with akka://TestA@127.0.0.1:5150/user/HeartbeatNode... as sender.
     // TODO: find better way to test these. Maybe return the string instead of printing from Node.receive()?

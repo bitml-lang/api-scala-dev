@@ -80,4 +80,29 @@ class Signer {
     val redeemScript = OP_DUP :: OP_HASH160 :: OP_PUSHDATA(pkh) :: OP_EQUALVERIFY :: OP_CHECKSIG :: Nil
     Script.write(redeemScript)
   }
+
+  def validateSig(toSign : Transaction, inputIndex : Int, amt : Satoshi, localEntry: ChunkEntry, sig : ByteVector) : Boolean = {
+    // Recreate signing hash
+    if (localEntry.owner.isEmpty ){
+      false
+    } else {
+      println("Verifying signature "+localEntry.chunkIndex)
+      val redeemScript = localEntry.chunkType match {
+        case ChunkType.SIG_P2PKH | ChunkType.SIG_P2WPKH => genP2PKHDummy(localEntry.owner.get)
+        case ChunkType.SIG_P2SH => Script.write(Seq(Script.parse(toSign.txIn(inputIndex).signatureScript).last)).drop(1)
+        case ChunkType.SIG_P2WSH => ScriptWitness.unapply(toSign.txIn(inputIndex).witness).get.last
+        case _ => return false
+      }
+      val sigVersion = localEntry.chunkType match {
+        case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH => SigVersion.SIGVERSION_BASE
+        case ChunkType.SIG_P2WPKH | ChunkType.SIG_P2WSH => SigVersion.SIGVERSION_WITNESS_V0
+        case _ => return false
+      }
+
+      val signData = Transaction.hashForSigning(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, sigVersion)
+      // Return signature validation
+      Crypto.verifySignature(signData, sig, localEntry.owner.get)
+    }
+
+  }
 }
