@@ -100,8 +100,11 @@ class Signer {
       }
 
       val signData = Transaction.hashForSigning(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, sigVersion)
+      //Convert back der+type flag to compact signature
+      val compactSig = Crypto.der2compact(sig)
       // Return signature validation
-      Crypto.verifySignature(signData, sig, localEntry.owner.get)
+      Crypto.verifySignature(signData, compactSig, localEntry.owner.get)
+
     }
 
   }
