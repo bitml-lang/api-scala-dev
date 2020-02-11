@@ -33,6 +33,7 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry]){
         // If the chunk holds new info and properly validates, then we can add its data to ours.
         if (localChunk.data.isEmpty && remoteChunk.data.nonEmpty && signer.validateSig(matchingTx, k, localIndex.amt, localChunk, remoteChunk.data) ) {
           localChunk.data = remoteChunk.data
+          println("Added signature from "+localChunk.owner+" to tx "+name)
         }
       }
     }

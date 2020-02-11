@@ -7,10 +7,12 @@ import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Address, CoordinatedShutdown, Props}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import fr.acinq.bitcoin.Transaction
+import fr.acinq.bitcoin.Crypto.PrivateKey
+import fr.acinq.bitcoin.{Base58, Btc, Transaction}
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import org.scalatest.funsuite.AnyFunSuite
-import xyz.bitml.api.{ChunkEntry, IndexEntry, TxEntry}
+import scodec.bits.ByteVector
+import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry}
 import xyz.bitml.api.messaging.{Heartbeat, Node, Ping, Pong, Query}
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 
@@ -129,5 +131,45 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
      *
      * This is where the signature exchange, and this test, takes place.
      */
+
+    // Insert serialized T1(_,_) into node A and B's txdb.
+    val t1 = Transaction.read("0200000001ed229658f9b7f09a2205eceaba8990b577d0afd3fcf23a329d3666c684c7fff9000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e210237c53ebef2992c5b3f0efca8b849f4969095b31e597bdab292385bb132c30f3e52aeffffffff0100e1f505000000001976a914ba91ed34ad92a7c2aa2d764c73cd0f31a18df68088ac00000000")
+    txdb.save("T1", t1)
+
+    // Build credential pairs.
+    val kb = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
+    val bpub = kb.publicKey
+    val ko = PrivateKey.fromBase58("cTyxEAoUSKcC9NKFCjxKTaXzP8i1ufEKtwVVtY6AsRPpRgJTZQRt", Base58.Prefix.SecretKeyTestnet)._1
+    val opub = ko.publicKey
+
+    val signer = new Signer()
+
+    // Start off from two blank TxEntry structures.
+    val bTxEntry = new TxEntry("T1", HashMap[Int, IndexEntry](0 -> new IndexEntry(amt = Btc(1).toSatoshi, chunkData = Seq(
+      new ChunkEntry(ChunkType.SIG_P2SH, 0, Option(bpub), data = ByteVector.empty ),
+      new ChunkEntry(ChunkType.SIG_P2SH, 1, Option(opub), data = ByteVector.empty )
+    ))))
+    val oTxEntry = new TxEntry("T1", HashMap[Int, IndexEntry](0 -> new IndexEntry(amt = Btc(1).toSatoshi, chunkData = Seq(
+      new ChunkEntry(ChunkType.SIG_P2SH, 0, Option(bpub), data = ByteVector.empty ),
+      new ChunkEntry(ChunkType.SIG_P2SH, 1, Option(opub), data = ByteVector.empty )
+    ))))
+
+    // Insert signatures from each participant into the respective network node.
+    signer.fillEntry(t1, bTxEntry, kb)
+    signer.fillEntry(t1, oTxEntry, ko)
+    metadbA.save(oTxEntry.name, oTxEntry)
+    metadbB.save(bTxEntry.name, bTxEntry)
+
+    // nodeB(b participant) will ask nodeA(o participant) for his copy of T1's meta.
+    println("Exchange start")
+    nodeB ! Query(remoteEndpointA.toString, bTxEntry.name)
+    Thread.sleep(1000)
+    println("Exchange end")
+
+    // O has successfully shared his signature with B
+    assert(metadbB.fetch("T1").get.indexData(0).chunkData(1).data == metadbA.fetch("T1").get.indexData(0).chunkData(1).data)
+    // B was never asked for his own signature, so O's chunk 0 data is empty.
+    assert(metadbA.fetch("T1").get.indexData(0).chunkData(0).data.isEmpty)
+
   }
 }
