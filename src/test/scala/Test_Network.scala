@@ -4,51 +4,71 @@ import java.io.File
 import scala.concurrent.duration._
 import akka.testkit.javadsl.TestKit
 import akka.pattern.ask
-import akka.actor.{ActorSystem, Address, Props}
+import akka.actor.{ActorRef, ActorSystem, Address, CoordinatedShutdown, Props}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import fr.acinq.bitcoin.Transaction
+import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import org.scalatest.funsuite.AnyFunSuite
-import xyz.bitml.api.TxEntry
-import xyz.bitml.api.messaging.{Heartbeat, Node, Ping, Pong}
+import xyz.bitml.api.{ChunkEntry, IndexEntry, TxEntry}
+import xyz.bitml.api.messaging.{Heartbeat, Node, Ping, Pong, Query}
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 
 import scala.collection.immutable.HashMap
 import scala.concurrent.Await
 
 
-class Test_Network extends AnyFunSuite {
-  test("Basic remote test. Heartbeat between two nodes on \"different\" networks") {
+class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
 
+  var nodeA: ActorRef = _
+  var nodeB: ActorRef = _
+  var remoteEndpointA : Address = _
+  var systemA : ActorSystem = _
+  var systemB : ActorSystem = _
 
-    // Setup placeholder storage
-    val metadb = new MetaStorage(new HashMap[String, TxEntry])
-    val txdb = new TxStorage(new HashMap[String, Transaction])
+  // Setup placeholder storage
+  val metadbA = new MetaStorage(new HashMap[String, TxEntry])
+  val metadbB = new MetaStorage(new HashMap[String, TxEntry])
+  val txdb = new TxStorage(new HashMap[String, Transaction])
 
+  override def beforeAll {
     // Setup network A
     val configFileA = getClass.getClassLoader.
       getResource("test_application.conf").getFile
     val configA = ConfigFactory.parseFile(new File(configFileA))
-    val systemA = ActorSystem("TestA" , configA)
-    val nodeA = systemA.actorOf(Props(classOf[Node], metadb), name = "HeartbeatNode")
+    systemA = ActorSystem("TestA" , configA)
+    nodeA = systemA.actorOf(Props(classOf[Node], metadbA, txdb), name = "HeartbeatNode")
     val addrA = nodeA.path.address // Local address A
     println(addrA)
 
-    val remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
+    remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
 
     // Setup network B
     val configFileB = getClass.getClassLoader.
       getResource("test_application_b.conf").getFile
     val configB = ConfigFactory.parseFile(new File(configFileB))
-    val systemB = ActorSystem("TestB" , configB)
-    val nodeB = systemB.actorOf(Props(classOf[Node], metadb), name = "HeartbeatNode")
+    systemB = ActorSystem("TestB" , configB)
+    nodeB = systemB.actorOf(Props(classOf[Node], metadbB, txdb), name = "HeartbeatNode")
     val addrB = nodeB.path.address // Local address B
     println(addrB)
 
     // TODO: debug properly
-    // setting up TestKIt instances writes down all debug messages, including
+    // setting up TestKIt instances writes down all debug messages, including routing information.
     val testKitA = new TestKit(systemA)
     val testKitB = new TestKit(systemB)
+  }
+
+
+  override def afterAll {
+    // Shutdown remote nodes. The test suite doesn't take care of this on their own.
+    CoordinatedShutdown(systemA).run(CoordinatedShutdown.unknownReason)
+    CoordinatedShutdown(systemB).run(CoordinatedShutdown.unknownReason)
+    Thread.sleep(500)
+  }
+
+
+
+  test("Ping/Pong remote test") {
 
     nodeB ! Ping() // the sender of a non-actor message is deadLetters. This will log an error when it tries to Pong()
     nodeB ! Pong() // On the other hand this is perfectly legitimate, even if the sender is deadLetters.
@@ -58,14 +78,56 @@ class Test_Network extends AnyFunSuite {
     val future = nodeB.ask(Ping())
     println(Await.result(
       (future), timeout.duration)) // This will return a "Pong()" message.
+  }
 
+  test("Heartbeat remote test") {
     // Heartbeat() is asynchronous. This is hard to test, but it will show up on the debug log after a certain timeout.
     nodeB ! Heartbeat(remoteEndpointA.toString)
-    Thread.sleep(1000)
+    Thread.sleep(500)
     // the debug log should have a few lines about message serialization and shipping back and forth,
     // then a Pong() "Heartbeat..." message with akka://TestA@127.0.0.1:5150/user/HeartbeatNode... as sender.
     // TODO: find better way to test these. Maybe return the string instead of printing from Node.receive()?
-    println("TEST END")
 
+  }
+
+  test("Query message remote test") {
+
+    // Send a request with no matching underlying tx data. This will print an error on the nodeA side.
+    nodeB ! Query(remoteEndpointA.toString, "TEST0")
+    Thread.sleep(500)
+
+    val txEntry = new TxEntry("TEST1", new HashMap[Int, IndexEntry]())
+    metadbA.save(txEntry.name, txEntry)
+
+    // Send a request with no matching base tx on the validation side. This will print an error on the nodeB side.
+    nodeB ! Query(remoteEndpointA.toString, "TEST1")
+    Thread.sleep(500)
+  }
+
+  test("<Balzac in a nutshell: Oracle>-based signature exchanging simulation") {
+    /**
+     * Small change to the T1 transaction: its base, starting form will contain only shared data.
+     *
+     * transaction T1(sigB, sigO) {
+     *   input = Alice.T: sigB sigO
+     *   output = 1 BTC: fun(x). versig(kB; x)
+     * }
+     *
+     * participant B will be nodeB, participant O will be nodeA.
+     * Because the signer creates the expected script for PKH-based signatures, we won't need any data from Alice.T to verify.
+     *
+     * The data generated on each participant by this transaction is:
+     * txdb["T1"] -> Transaction object from T1(_,_)
+     * metadb["T1"] -> TxEntry("T1", { 0 -> IndexEntry(1 BTC,
+     *                   [chunkEntry(SIG_P2SH, 0, B.pubkey, []), chunkEntry(SIG_P2SH, 1, O.pubkey, []), ]
+     *                 )})
+     *
+     * The states of B and O's metadb then diverge: B's first chunkentry will become
+     *     chunkEntry(SIG_P2SH, 0, B.pubkey, sigB)
+     * And O's second chunkentry will become
+     *     chunkEntry(SIG_P2SH, 1, O.pubkey, sigO)
+     *
+     * This is where the signature exchange, and this test, takes place.
+     */
   }
 }

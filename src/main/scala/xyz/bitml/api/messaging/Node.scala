@@ -1,12 +1,12 @@
 package xyz.bitml.api.messaging
 
 import akka.actor.{Actor, Address, Props}
-import xyz.bitml.api.persistence.MetaStorage
+import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 import xyz.bitml.api.serialization.Serializer
 
 
 
-class Node  (val metaStorage : MetaStorage) extends Actor{
+class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends Actor{
 
   override def receive: Receive = {
     case Heartbeat(endpoint) => heartbeat(endpoint)
@@ -28,7 +28,13 @@ class Node  (val metaStorage : MetaStorage) extends Actor{
       val ser = new Serializer
       val resData = ser.deserializeTxEntry(serializedTx)
       // TODO: verify signatures and save any previously unknown data into our own TxEntry and back into MetaStorage
-
+      val txName = resData.name
+      val baseTx = txStorage.fetch(txName)
+      if (baseTx.nonEmpty) {
+        metaStorage.update(txName, resData ,baseTx.get)
+      }else{
+        println("Unable to find tx "+txName+" referenced by remote actor "+sender().toString())
+      }
     case _ => println("placeholder " + sender().toString())
   }
 
