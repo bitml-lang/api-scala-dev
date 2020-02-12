@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, TxEntry}
 import xyz.bitml.api.persistence.TxStorage
-import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer, TxSerializer}
+import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
 
 import scala.collection.immutable.HashMap
 
@@ -34,7 +34,7 @@ class Test_Serializer extends AnyFunSuite {
     val testStorage = new TxStorage(HashMap("TEST" -> tx))
 
 
-    implicit val formats: Formats = org.json4s.DefaultFormats + new TxSerializer()
+    implicit val formats: Formats = org.json4s.DefaultFormats + new TxStorageSerializer()
     val written = Serialization.write(testStorage)
     val resultCheck = Serialization.read[TxStorage](written)
     assert(testStorage.equals(resultCheck))
