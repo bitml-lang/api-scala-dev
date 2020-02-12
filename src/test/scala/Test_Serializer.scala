@@ -6,8 +6,8 @@ import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Participant, TxEntry}
-import xyz.bitml.api.persistence.{ParticipantStorage, TxStorage}
-import xyz.bitml.api.serialization.{ByteVectorSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
+import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, TxStorage}
+import xyz.bitml.api.serialization.{ByteVectorSerializer, MetaStorageSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
 
 import scala.collection.immutable.HashMap
 
@@ -87,5 +87,24 @@ class Test_Serializer extends AnyFunSuite {
     println(serialized)
     val deserializeCheck = ser.deserializeTxEntry(serialized)
     assert(deserializeCheck.equals(empty))
+  }
+
+  test ("Serialization/Deserialization of MetaStorage.") {
+
+    val privateKey = PrivateKey.fromBase58("cRp4uUnreGMZN8vB7nQFX6XWMHU5Lc73HMAhmcDEwHfbgRS66Cqp", Base58.Prefix.SecretKeyTestnet)._1
+    val publicKey = privateKey.publicKey
+
+    val chunks =  Seq(new ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(publicKey), data = ByteVector.empty))
+    val indexInfo = new IndexEntry(Satoshi(0), chunks)
+    val empty = new TxEntry(name="TEST",
+      indexData= HashMap(0 -> indexInfo))
+    val meta = new MetaStorage(HashMap(empty.name -> empty))
+
+    implicit val formats : Formats = org.json4s.DefaultFormats + new MetaStorageSerializer
+
+    val serialized = Serialization.write(meta)
+    println(serialized)
+    val deserializeCheck = Serialization.read[MetaStorage](serialized)
+    assert(deserializeCheck.equals(meta))
   }
 }
