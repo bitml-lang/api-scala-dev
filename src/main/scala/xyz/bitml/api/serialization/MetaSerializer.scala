@@ -2,6 +2,7 @@ package xyz.bitml.api.serialization
 
 import org.json4s.CustomSerializer
 import xyz.bitml.api.persistence.MetaStorage
+
 /*
 class MetaSerializer extends CustomSerializer[MetaStorage](format =>(
 

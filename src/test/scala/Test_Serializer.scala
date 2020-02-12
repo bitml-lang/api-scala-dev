@@ -1,12 +1,13 @@
+import akka.actor.Address
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Satoshi, Transaction}
 import org.json4s.Formats
 import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, TxEntry}
-import xyz.bitml.api.persistence.TxStorage
-import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
+import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Participant, TxEntry}
+import xyz.bitml.api.persistence.{ParticipantStorage, TxStorage}
+import xyz.bitml.api.serialization.{ByteVectorSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
 
 import scala.collection.immutable.HashMap
 
@@ -38,6 +39,18 @@ class Test_Serializer extends AnyFunSuite {
     val written = Serialization.write(testStorage)
     val resultCheck = Serialization.read[TxStorage](written)
     assert(testStorage.equals(resultCheck))
+  }
+
+  test ("Serialization/Deserialization of ParticipantStorage") {
+    val priv1 = PrivateKey.fromBase58("QRY5zPUH6tWhQr2NwFXNpMbiLQq9u2ztcSZ6RwMPjyKv36rHP2xT", Base58.Prefix.SecretKeySegnet)._1
+    val pub1 = priv1.publicKey
+    val p = new Participant(name = "test", pubkey = pub1, endpoint = Address("akka", "test", "10.11.12.13", 1234) )
+    val pstor = new ParticipantStorage(inMemoryDb = HashMap(pub1.toString() -> p))
+
+    implicit val formats : Formats = org.json4s.DefaultFormats + new PartStorageSerializer
+    val written = Serialization.write(pstor)
+    val resultCheck = Serialization.read[ParticipantStorage](written)
+    assert(pstor.equals(resultCheck))
   }
 
   test ("Serialization/Deserialization of TxEntry without any chunk data.") {
