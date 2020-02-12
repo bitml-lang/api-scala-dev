@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, TxEntry}
 import xyz.bitml.api.persistence.TxStorage
-import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer}
+import xyz.bitml.api.serialization.{ByteVectorSerializer, SatoshiSerializer, Serializer, TxSerializer}
 
 import scala.collection.immutable.HashMap
 
@@ -27,6 +27,17 @@ class Test_Serializer extends AnyFunSuite {
     implicit val formats: Formats = org.json4s.DefaultFormats + new SatoshiSerializer()
     val resultCheck = Serialization.read[Satoshi](Serialization.write(testSat))
     assert(testSat.equals(resultCheck))
+  }
+
+  test ("Serialization and deserialization of TxStorage") {
+    val tx = Transaction.read("0100000001b021a77dcaad3a2da6f1611d2403e1298a902af8567c25d6e65073f6b52ef12d000000006a473044022056156e9f0ad7506621bc1eb963f5133d06d7259e27b13fcb2803f39c7787a81c022056325330585e4be39bcf63af8090a2deff265bc29a3fb9b4bf7a31426d9798150121022dfb538041f111bb16402aa83bd6a3771fa8aa0e5e9b0b549674857fafaf4fe0ffffffff0210270000000000001976a91415c23e7f4f919e9ff554ec585cb2a67df952397488ac3c9d1000000000001976a9148982824e057ccc8d4591982df71aa9220236a63888ac00000000")
+    val testStorage = new TxStorage(HashMap("TEST" -> tx))
+
+
+    implicit val formats: Formats = org.json4s.DefaultFormats + new TxSerializer()
+    val written = Serialization.write(testStorage)
+    val resultCheck = Serialization.read[TxStorage](written)
+    assert(testStorage.equals(resultCheck))
   }
 
   test ("Serialization/Deserialization of TxEntry without any chunk data.") {

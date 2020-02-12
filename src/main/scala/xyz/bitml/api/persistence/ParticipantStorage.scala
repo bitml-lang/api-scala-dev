@@ -1,0 +1,32 @@
+package xyz.bitml.api.persistence
+
+import xyz.bitml.api.Participant
+
+class ParticipantStorage (private var inMemoryDb : Map[String, Participant]){
+
+  def fetch(pubString : String): Option[Participant] = {
+    inMemoryDb.get(pubString)
+  }
+
+  def save(pubString : String, data: Participant): Unit = {
+    inMemoryDb = inMemoryDb.updated(pubString, data)
+  }
+
+  def dump() : Map[String, Participant] = {
+    inMemoryDb
+  }
+
+  def canEqual(other: Any): Boolean = other.isInstanceOf[ParticipantStorage]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: ParticipantStorage =>
+      (that canEqual this) &&
+        inMemoryDb == that.inMemoryDb
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(inMemoryDb)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
+}

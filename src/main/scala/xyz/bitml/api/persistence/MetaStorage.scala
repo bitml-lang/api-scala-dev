@@ -40,4 +40,17 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry]){
     // No need to propagate the changes as localCopy is the actual record.
   }
 
+  def canEqual(other: Any): Boolean = other.isInstanceOf[MetaStorage]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: MetaStorage =>
+      (that canEqual this) &&
+        inMemoryDb == that.inMemoryDb
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(inMemoryDb)
+    state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
+  }
 }
