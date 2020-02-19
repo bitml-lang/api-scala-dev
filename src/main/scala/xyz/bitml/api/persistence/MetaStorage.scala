@@ -24,7 +24,7 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry]) extends LazyLo
       return
     })
     val signer = new Signer()
-    // We will simply discard anything but the actual data, and validate with our own copy. TODO: proper logging+error handling
+    // We will simply discard anything but the actual data, and validate with our own copy.
     for (k <- localCopy.indexData.keys) {
       val localIndex = localCopy.indexData(k)
       val remoteIndex = data.indexData(k)

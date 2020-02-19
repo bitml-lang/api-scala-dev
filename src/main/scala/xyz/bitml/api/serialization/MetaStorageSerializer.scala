@@ -1,9 +1,9 @@
 package xyz.bitml.api.serialization
 
-import org.json4s.{CustomSerializer, Extraction, Formats}
 import org.json4s.JsonAST.{JField, JObject, JValue}
-import xyz.bitml.api.{ChunkType, TxEntry}
+import org.json4s.{CustomSerializer, Extraction, Formats}
 import xyz.bitml.api.persistence.MetaStorage
+import xyz.bitml.api.{ChunkType, TxEntry}
 
 
 class MetaStorageSerializer extends CustomSerializer[MetaStorage](format =>(

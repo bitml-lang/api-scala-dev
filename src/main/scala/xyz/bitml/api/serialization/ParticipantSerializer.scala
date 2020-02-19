@@ -1,7 +1,6 @@
 package xyz.bitml.api.serialization
 
 import akka.actor.Address
-import fr.acinq.bitcoin.Crypto
 import fr.acinq.bitcoin.Crypto.PublicKey
 import org.json4s.JsonAST.{JField, JObject, JString, JValue}
 import org.json4s.{CustomSerializer, Extraction, Formats}

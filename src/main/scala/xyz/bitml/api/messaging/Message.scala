@@ -1,12 +1,11 @@
 package xyz.bitml.api.messaging
 
-import akka.actor.{ActorRef, Address}
+import akka.actor.PossiblyHarmful
 
 sealed trait Event
 
-// TODO: flag these 2 as PossiblyHarmful once we activate untrusted-mode
-case class Heartbeat(endpoint : String) extends Event
-case class Query(endpoint : String, txMeta: String) extends Event
+case class Heartbeat(endpoint : String) extends Event with PossiblyHarmful
+case class Query(endpoint : String, txMeta: String) extends Event with PossiblyHarmful
 
 case class Ping() extends Event
 case class Pong() extends Event

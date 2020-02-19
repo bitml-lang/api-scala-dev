@@ -1,14 +1,12 @@
 package xyz.bitml.api.messaging
 
-import akka.actor.{Actor, Address, Props}
+import akka.actor.Actor
+import com.typesafe.scalalogging.LazyLogging
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 import xyz.bitml.api.serialization.Serializer
-import com.typesafe.scalalogging.Logger
 
 
-class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends Actor{
-
-  private var logger = Logger[Node]
+class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends Actor with LazyLogging{
 
   override def receive: Receive = {
     case Heartbeat(endpoint) => heartbeat(endpoint)
@@ -28,7 +26,6 @@ class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends A
     case Data(serializedTx) =>
       val ser = new Serializer
       val resData = ser.deserializeTxEntry(serializedTx)
-      // TODO: verify signatures and save any previously unknown data into our own TxEntry and back into MetaStorage
       val txName = resData.name
       val baseTx = txStorage.fetch(txName)
       if (baseTx.nonEmpty) {

@@ -1,8 +1,7 @@
 package xyz.bitml.api.serialization
 
-import fr.acinq.bitcoin.Transaction
+import org.json4s.JsonAST.{JField, JObject, JValue}
 import org.json4s.{CustomSerializer, Extraction, Formats}
-import org.json4s.JsonAST.{JField, JInt, JObject, JString, JValue}
 import xyz.bitml.api.Participant
 import xyz.bitml.api.persistence.ParticipantStorage
 
