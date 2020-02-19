@@ -41,7 +41,6 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     systemA = ActorSystem("TestA" , configA)
     nodeA = systemA.actorOf(Props(classOf[Node], metadbA, txdb), name = "HeartbeatNode")
     val addrA = nodeA.path.address // Local address A
-    println(addrA)
 
     remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
 
@@ -52,7 +51,6 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     systemB = ActorSystem("TestB" , configB)
     nodeB = systemB.actorOf(Props(classOf[Node], metadbB, txdb), name = "HeartbeatNode")
     val addrB = nodeB.path.address // Local address B
-    println(addrB)
 
     // TODO: debug properly
     // setting up TestKIt instances writes down all debug messages, including routing information.
@@ -78,8 +76,8 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     // "Proper" version of the Ping() test above, that catches and prints the response message.
     implicit val timeout: Timeout = Timeout(1 second)
     val future = nodeB.ask(Ping())
-    println(Await.result(
-      (future), timeout.duration)) // This will return a "Pong()" message.
+    assert(Await.result(
+      (future), timeout.duration) == Pong()) // This will return a "Pong()" message.
   }
 
   test("Heartbeat remote test") {

@@ -325,11 +325,9 @@ class Test_Signer extends AnyFunSuite {
 
       // Fill in signature for priv2
       signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv2)
-      println("SIG2: " +txData.indexData(0).chunkData(0).data)
 
       // Fill in signature for priv3
       signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv3)
-      println("SIG3: "+txData.indexData(0).chunkData(1).data)
 
       // Build the correct witness stack. This can be automated with all the info in chunkEntry, but for now we'll do it here.
       // Because the witness stack is not a sequence of ScriptElt but of regular ByteVectors, we'll use the ByteVector method.
@@ -406,14 +404,12 @@ class Test_Signer extends AnyFunSuite {
 
       // Fill in signature for priv2
       signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv2)
-      println("SIG2: " +txData.indexData(0).chunkData(0).data)
 
       // Verify the signature with pub2.
       assert(signer.validateSig(tmp, 0, indexData.amt, indexData.chunkData(0), indexData.chunkData(0).data))
 
       // Fill in signature for priv3
       signer.fillEntry(mockDb.fetch("TEMP").get, txData, priv3)
-      println("SIG3: "+txData.indexData(0).chunkData(1).data)
 
       // Verify signature for pub3.
       assert(signer.validateSig(tmp, 0, indexData.amt, indexData.chunkData(1), indexData.chunkData(1).data))

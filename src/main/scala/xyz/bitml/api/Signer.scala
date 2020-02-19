@@ -1,18 +1,19 @@
 package xyz.bitml.api
 
+import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
 import fr.acinq.bitcoin.{Crypto, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160, OP_PUSHDATA, Satoshi, Script, ScriptElt, ScriptWitness, SigVersion, Transaction}
 import scodec.bits.ByteVector
 
-class Signer {
+class Signer extends LazyLogging{
 
   // Generate and fill signature into ChunkEntry object if we have the correct private key.
   def fillSig(txData : Transaction, inputIndex : Int, chunkEntry: ChunkEntry, identity : PrivateKey, amt : Option[Satoshi]) : Boolean = {
     if (chunkEntry.owner.isEmpty || (chunkEntry.owner.get != identity.publicKey)){
       false
     } else {
-      println("Signature "+chunkEntry.chunkIndex+" can be filled by "+identity.publicKey)
+      logger.info("Signature "+chunkEntry.chunkIndex+" can be filled by "+identity.publicKey)
       val produced = chunkEntry.chunkType match {
         case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
         case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
@@ -27,7 +28,7 @@ class Signer {
   }
   // Run through TxEntry, looking for chunks that can be signed with the provided private key
   def fillEntry(txData: Transaction, txEntry: TxEntry, identity: PrivateKey): Unit = {
-    println("Browsing through chunks in transaction "+ txEntry.name)
+    logger.debug("Browsing through chunks in transaction "+ txEntry.name)
     val signer = new Signer()
 
     for (indexChunks <- txEntry.indexData) {
@@ -86,7 +87,7 @@ class Signer {
     if (localEntry.owner.isEmpty ){
       false
     } else {
-      println("Verifying signature "+localEntry.chunkIndex)
+      logger.debug("Verifying signature "+localEntry.chunkIndex)
       val redeemScript = localEntry.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2WPKH => genP2PKHDummy(localEntry.owner.get)
         case ChunkType.SIG_P2SH => Script.write(Seq(Script.parse(toSign.txIn(inputIndex).signatureScript).last)).drop(1)
@@ -116,7 +117,7 @@ class Signer {
     for (id <- data.indexData) {
       for (chunk <- id._2.chunkData) {
         if (chunk.data.isEmpty) {
-          println("Warning: One of the expected chunks appears to be empty!")
+          logger.warn("Warning: One of the expected chunks appears to be empty!")
         } else {
           chunk.chunkType match {
             case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => {
@@ -126,7 +127,7 @@ class Signer {
               val witstack = cp.txIn(id._1).witness.stack
               cp.updateWitness(id._1, ScriptWitness(injectAt(chunk.data, chunk.chunkIndex, witstack)))
             }
-            case _ => println("Warning: chunk type is unknown/incompatible with auto-insertion")
+            case _ => logger.warn("Warning: chunk type is unknown/incompatible with auto-insertion")
           }
         }
       }

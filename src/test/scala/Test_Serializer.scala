@@ -63,7 +63,6 @@ class Test_Serializer extends AnyFunSuite {
     val ser = new Serializer()
 
     val serialized = ser.serializeTxEntry(empty)
-    println(serialized)
     val deserializeCheck = ser.deserializeTxEntry(serialized)
     assert(deserializeCheck.equals(empty))
   }
@@ -84,7 +83,6 @@ class Test_Serializer extends AnyFunSuite {
     val ser = new Serializer()
 
     val serialized = ser.serializeTxEntry(empty)
-    println(serialized)
     val deserializeCheck = ser.deserializeTxEntry(serialized)
     assert(deserializeCheck.equals(empty))
   }
@@ -103,7 +101,6 @@ class Test_Serializer extends AnyFunSuite {
     implicit val formats : Formats = org.json4s.DefaultFormats + new MetaStorageSerializer
 
     val serialized = Serialization.write(meta)
-    println(serialized)
     val deserializeCheck = Serialization.read[MetaStorage](serialized)
     assert(deserializeCheck.equals(meta))
   }
