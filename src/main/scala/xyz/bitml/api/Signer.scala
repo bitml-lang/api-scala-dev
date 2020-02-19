@@ -112,7 +112,7 @@ class Signer extends LazyLogging{
 
   def assembleTx(tx : Transaction, data : TxEntry): Transaction = {
     //Create a deep copy by deserializing the serialized tx.
-    val cp = Transaction.read(Transaction.write(tx).toHex)
+    var cp = Transaction.read(Transaction.write(tx).toHex)
 
     for (id <- data.indexData) {
       for (chunk <- id._2.chunkData) {
@@ -121,11 +121,15 @@ class Signer extends LazyLogging{
         } else {
           chunk.chunkType match {
             case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => {
-              cp.updateSigScript(id._1, injectPushdataIn(Script.parse(cp.txIn(id._1).signatureScript), chunk.data, chunk.chunkIndex))
+              cp = cp.updateSigScript(id._1, injectPushdataIn(Script.parse(cp.txIn(id._1).signatureScript), chunk.data, chunk.chunkIndex))
+              logger.debug("Added chunk to sigScript")
+              logger.warn("TXID CHANGE: " + tx.txid + " -> " + cp.txid)
+              // TODO: propagate in transactions referencing the original txid as outpoint.
             }
             case ChunkType.SIG_P2WPKH | ChunkType.SIG_P2WSH | ChunkType.SECRET_WIT => {
               val witstack = cp.txIn(id._1).witness.stack
-              cp.updateWitness(id._1, ScriptWitness(injectAt(chunk.data, chunk.chunkIndex, witstack)))
+              cp = cp.updateWitness(id._1, ScriptWitness(injectAt(chunk.data, chunk.chunkIndex, witstack)))
+              logger.debug("added chunk to witness stack")
             }
             case _ => logger.warn("Warning: chunk type is unknown/incompatible with auto-insertion")
           }
