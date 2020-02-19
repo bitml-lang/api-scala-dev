@@ -108,4 +108,29 @@ class Signer {
     }
 
   }
+
+  def assembleTx(tx : Transaction, data : TxEntry): Transaction = {
+    //Create a deep copy by deserializing the serialized tx.
+    val cp = Transaction.read(Transaction.write(tx).toHex)
+
+    for (id <- data.indexData) {
+      for (chunk <- id._2.chunkData) {
+        if (chunk.data.isEmpty) {
+          println("Warning: One of the expected chunks appears to be empty!")
+        } else {
+          chunk.chunkType match {
+            case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => {
+              cp.updateSigScript(id._1, injectPushdataIn(Script.parse(cp.txIn(id._1).signatureScript), chunk.data, chunk.chunkIndex))
+            }
+            case ChunkType.SIG_P2WPKH | ChunkType.SIG_P2WSH | ChunkType.SECRET_WIT => {
+              val witstack = cp.txIn(id._1).witness.stack
+              cp.updateWitness(id._1, ScriptWitness(injectAt(chunk.data, chunk.chunkIndex, witstack)))
+            }
+            case _ => println("Warning: chunk type is unknown/incompatible with auto-insertion")
+          }
+        }
+      }
+    }
+    cp
+  }
 }
