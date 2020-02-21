@@ -18,11 +18,11 @@ class SegwitConverter extends LazyLogging{
   }
   // Retrieve the names of any transaction referencing a certain txid. Useful for tracking the tx tree forward.
   def searchRedeemer(txdb : TxStorage, id : ByteVector32) : Seq[String] = {
-    txdb.dump().filter(x => x._2.txIn.exists(p => p.outPoint.txid == id)).keys.toSeq
+    txdb.dump().filter(x => x._2.txIn.exists(_.outPoint.txid == id)).keys.toSeq
   }
   // Search in our db a transaction referenced by txid in an OutPoint. Useful for tracking the tx tree backwards.
   def searchOutpoint(txdb : TxStorage, id : ByteVector32) : Seq[String] = {
-    val ref = txdb.dump().filter(x => x._2.hash == id).keys.toSeq
+    val ref = txdb.dump().filter(_._2.hash == id).keys.toSeq
     if (ref.isEmpty) {
       logger.warn("No transaction found. Root tx?")
     } else if (ref.length > 1) {
@@ -70,7 +70,7 @@ class SegwitConverter extends LazyLogging{
 
       // Go through the inputData.
       // If we find a signature or secret specifying this is a P2PKH or P2SH, go through the conversion.
-      val toConvert = meta.indexData.filter(x => x._2.chunkData.exists(p => p.chunkType match {
+      val toConvert = meta.indexData.filter(_._2.chunkData.exists(_.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
         case _ => false
       }))
@@ -79,7 +79,7 @@ class SegwitConverter extends LazyLogging{
       for (i <- toConvert) {
         // If the sigScript references one of our own transactions,  we can safely change it
         //  and queue to update the referenced tx with the modified pubKeyScript
-        if (oldIdMap.keys.exists(f => f == cp.txIn(i._1).outPoint.txid)) {
+        if (oldIdMap.keys.exists(_ == cp.txIn(i._1).outPoint.txid)) {
 
           // Convert the signatureScript
           val ss = cp.txIn(i._1).signatureScript
@@ -88,7 +88,7 @@ class SegwitConverter extends LazyLogging{
 
           // Produce the corresponding pubKeyScript
           var pubKeyScript = ByteVector.empty
-          if (i._2.chunkData.exists(p => p.chunkType == ChunkType.SIG_P2PKH)) {
+          if (i._2.chunkData.exists(_.chunkType == ChunkType.SIG_P2PKH)) {
             pubKeyScript = Script.write(Script.pay2wpkh(Script.publicKey(Script.parse(ss))))
           }
           // If it's using either p2sh signatures or secrets it's a p2sh and we need to retrieve the redeemScript to proceed.
@@ -130,7 +130,7 @@ class SegwitConverter extends LazyLogging{
         signatureScript = f.signatureScript,
         sequence = f.sequence,
         outPoint = { // Switch txid if it's between the ones we tracked.
-          if (oldIdMap.keys.exists(x => x == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid), index = f.outPoint.index) else f.outPoint
+          if (oldIdMap.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid), index = f.outPoint.index) else f.outPoint
         }
       ))
 
