@@ -96,7 +96,7 @@ class SegwitConverter extends LazyLogging{
             pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
           }
 
-          val prevStr = searchOutpoint(txdb, cp.txIn(i._1).outPoint.hash).head
+          val prevStr = oldIdMap(cp.txIn(i._1).outPoint.hash)
           queue.enqueue((prevStr, List(
             (cp.txIn(i._1).outPoint.index.toInt, pubKeyScript))))
 
