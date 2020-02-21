@@ -36,15 +36,19 @@ class SegwitConverter extends LazyLogging{
   }
   // Move backwards through the tree and convert every non-segwit transaction into one.
   def convertTree(metadb : MetaStorage, txdb : TxStorage): Unit = {
+    // build txid -> name map
+    val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
+
     val leaves = searchLeaves(txdb).map(x => (x,Map[Int,ByteVector]()))
     val queue = mutable.Queue() ++= leaves
     // Starting state : leaf nodes
+
+    // propagate the changes backwards from the leaves, stopping either when we reference an external transaction (roots)
+    // or there are no non-witness sigScripts (already processed)
     while (queue.nonEmpty) {
       val leafName = queue.dequeue
       val tx = txdb.fetch(leafName._1).get
       val meta = metadb.fetch(leafName._1).get
-      val oldid = tx.txid
-
 
       // Create a deep copy that we can overwrite and save at the end.
       var cp = Transaction.read(Transaction.write(tx).toHex)
@@ -75,32 +79,74 @@ class SegwitConverter extends LazyLogging{
 
 
       for (i <- toConvert) {
-        val ss = cp.txIn(i._1).signatureScript
-        val wit = convertRedeem(ss)
-        cp = cp.updateSigScript(i._1, ByteVector.empty).updateWitness(i._1, wit)
+        // If the sigScript references one of our own transactions,  we can safely change it
+        //  and queue the referenced tx with the modified pubKeyScript
+        if (oldIdMap.keys.exists(f => f == cp.txIn(i._1).outPoint.txid)) {
 
-        var pubKeyScript = ByteVector.empty
-        if (i._2.chunkData.exists(p => p.chunkType == ChunkType.SIG_P2PKH)){
-          pubKeyScript = Script.write(Script.pay2wpkh(Script.publicKey(Script.parse(ss))))
+          // Convert the signatureScript
+          val ss = cp.txIn(i._1).signatureScript
+          val wit = convertRedeem(ss)
+          cp = cp.updateSigScript(i._1, ByteVector.empty).updateWitness(i._1, wit)
+
+          // Produce the corresponding pubKeyScript
+          var pubKeyScript = ByteVector.empty
+          if (i._2.chunkData.exists(p => p.chunkType == ChunkType.SIG_P2PKH)) {
+            pubKeyScript = Script.write(Script.pay2wpkh(Script.publicKey(Script.parse(ss))))
+          }
+          // If it's using either p2sh signatures or secrets it's a p2sh and we need to retrieve the redeemScript to proceed.
+          else {
+            pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
+          }
+
+          val prevStr = searchOutpoint(txdb, cp.txIn(i._1).outPoint.hash).head
+          queue.enqueue((prevStr, Map {
+            cp.txIn(i._1).outPoint.index.toInt -> pubKeyScript
+          }))
+
+          // Convert our own info and update our IndexData
+          val newI = new IndexEntry(i._2.amt, i._2.chunkData.map(f => new ChunkEntry(
+            chunkType = f.chunkType match {
+              case ChunkType.SECRET_IN => ChunkType.SECRET_WIT
+              case ChunkType.SIG_P2SH => ChunkType.SIG_P2WSH
+              case ChunkType.SIG_P2PKH => ChunkType.SIG_P2WPKH
+              case _ => f.chunkType
+            },
+            chunkIndex = f.chunkIndex,
+            owner = f.owner,
+            data = ByteVector.empty // Even if we do have something in here it's most definitely wrong now.
+          )))
+          meta.indexData.updated(i._1, newI)
         }
-        // If it's using either p2sh signatures or secrets it's a p2sh and we need to retrieve the redeemScript to proceed.
-        else {
-          pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
-        }
-
-        val prevStr = searchOutpoint(txdb, cp.txIn(i._1).outPoint.hash).head
-        queue.enqueue((prevStr, Map {cp.txIn(i._1).outPoint.index.toInt -> pubKeyScript}))
-
-        // Convert our own info.
 
       }
       // Save the new transaction.
       txdb.save(leafName._1, cp)
 
-      // TODO: Convert and save the tx info as well.
-
-
     }
+    // build new name -> txid map
+    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid))
+
+    // TODO: map old txid -> new txid, then scroll through every tx and replace them.
+    val txidSub = oldIdMap.map(f => (f._1 -> newIdMap(f._2)))
+
+    txdb.dump().map(x => (x._1 -> {
+      // Scroll through the entire TxIn list and switch out outdated OutPoints.
+      val newTxIn = x._2.txIn.map(f => new TxIn(
+        signatureScript = f.signatureScript,
+        sequence = f.sequence,
+        outPoint = { // Switch txid if it's between the ones we tracked.
+          if (oldIdMap.keys.exists(x => x == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid), index = f.outPoint.index) else f.outPoint
+        }
+      ))
+
+      // Return the new transaction.
+      Transaction(
+        version = x._2.version,
+        txOut = x._2.txOut,
+        lockTime = x._2.lockTime,
+        txIn = newTxIn
+      )
+    }))
   }
 
 }
