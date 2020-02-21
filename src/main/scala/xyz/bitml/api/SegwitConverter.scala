@@ -39,7 +39,7 @@ class SegwitConverter extends LazyLogging{
     // build txid -> name map
     val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
 
-    val leaves = searchLeaves(txdb).map(x => (x,Map[Int,ByteVector]()))
+    val leaves = searchLeaves(txdb).map(x => (x,List[(Int, ByteVector)]()))
     val queue = mutable.Queue() ++= leaves
     // Starting state : leaf nodes
 
@@ -55,11 +55,9 @@ class SegwitConverter extends LazyLogging{
 
       // Go through the Output data. Switch every pubkeyScript with the ones included in the map.
       for (x <- leafName._2) {
-
         val newEntry = cp.txOut.toList(x._1)
         val txOut =  new TxOut(newEntry.amount, x._2)
         val newTxOut = cp.txOut.updated(x._1, txOut)
-
         // Rebuild the transaction with the new TxOut list.
         cp = Transaction (
           version=cp.version,
@@ -73,14 +71,14 @@ class SegwitConverter extends LazyLogging{
       // Go through the inputData.
       // If we find a signature or secret specifying this is a P2PKH or P2SH, go through the conversion.
       val toConvert = meta.indexData.filter(x => x._2.chunkData.exists(p => p.chunkType match {
-        case ChunkType.SIG_P2PKH || ChunkType.SIG_P2SH || ChunkType.SECRET_IN => true
+        case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
         case _ => false
       }))
 
 
       for (i <- toConvert) {
         // If the sigScript references one of our own transactions,  we can safely change it
-        //  and queue the referenced tx with the modified pubKeyScript
+        //  and queue to update the referenced tx with the modified pubKeyScript
         if (oldIdMap.keys.exists(f => f == cp.txIn(i._1).outPoint.txid)) {
 
           // Convert the signatureScript
@@ -99,9 +97,8 @@ class SegwitConverter extends LazyLogging{
           }
 
           val prevStr = searchOutpoint(txdb, cp.txIn(i._1).outPoint.hash).head
-          queue.enqueue((prevStr, Map {
-            cp.txIn(i._1).outPoint.index.toInt -> pubKeyScript
-          }))
+          queue.enqueue((prevStr, List(
+            (cp.txIn(i._1).outPoint.index.toInt, pubKeyScript))))
 
           // Convert our own info and update our IndexData
           val newI = new IndexEntry(i._2.amt, i._2.chunkData.map(f => new ChunkEntry(
@@ -117,11 +114,9 @@ class SegwitConverter extends LazyLogging{
           )))
           meta.indexData.updated(i._1, newI)
         }
-
       }
       // Save the new transaction.
       txdb.save(leafName._1, cp)
-
     }
     // build new name -> txid map
     val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid))
