@@ -85,7 +85,7 @@ class SegwitConverter extends LazyLogging{
 
       // Go through the inputData.
       // If we find a signature or secret specifying this is a P2PKH or P2SH, go through the conversion.
-      val toConvert = m._2.indexData.filter(_._2.getChunks.exists(_.chunkType match {
+      val toConvert = m._2.indexData.filter(_._2.chunkData.exists(_.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
         case _ => false
       }))
@@ -98,10 +98,10 @@ class SegwitConverter extends LazyLogging{
         if (prevTx.nonEmpty) {
 
           // Update the redeemScript and produce the matching PubKeyScript
-          val isP2SH = i._2.getChunks.exists(_.chunkType match {
+          val isP2SH = i._2.chunkData.exists(_.chunkType match {
             case ChunkType.SIG_P2PKH => true
             case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => false
-            case _ => logger.error("Unexpected processing of non-base index type " + classOf[_]); true
+            case _ => logger.error("Unexpected processing of non-base index type"); true
           })
           val res = switchInput(cp, i._1, isP2SH)
           cp = res._1
@@ -111,18 +111,16 @@ class SegwitConverter extends LazyLogging{
           txdb.save(prevStr, switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks))
 
           // Convert our own info and update our IndexData
-          val newChunks =  i._2.getChunks.map(f => new ChunkEntry(
+          val newChunks =  i._2.chunkData.map(f => f.copy(
             chunkType = f.chunkType match {
               case ChunkType.SECRET_IN => ChunkType.SECRET_WIT
               case ChunkType.SIG_P2SH => ChunkType.SIG_P2WSH
               case ChunkType.SIG_P2PKH => ChunkType.SIG_P2WPKH
-              case _ => logger.error("Unexpected processing of non-base index type " + classOf[_]); f.chunkType
+              case _ => logger.error("Unexpected processing of non-base index type"); f.chunkType
             },
-            chunkIndex = f.chunkIndex,
-            owner = f.owner,
             data = ByteVector.empty // Even if we do have something in here it's most definitely wrong now.
           ))
-          m._2.indexData(i._1).setChunks(newChunks)
+          m._2.indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))
 
         }
       }
