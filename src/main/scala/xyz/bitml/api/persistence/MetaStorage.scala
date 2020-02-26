@@ -4,7 +4,9 @@ import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Transaction
 import xyz.bitml.api.{Signer, TxEntry}
 
-class MetaStorage (private var inMemoryDb : Map[String, TxEntry]) extends LazyLogging{
+import scala.collection.immutable.HashMap
+
+class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[String, TxEntry]) extends LazyLogging{
   def fetch(name: String): Option[TxEntry] = {
     inMemoryDb.get(name)
   }

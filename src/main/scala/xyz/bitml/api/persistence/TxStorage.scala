@@ -2,7 +2,9 @@ package xyz.bitml.api.persistence
 
 import fr.acinq.bitcoin.Transaction
 
-class TxStorage (private var inMemoryDb : Map[String, Transaction]){
+import scala.collection.immutable.HashMap
+
+class TxStorage (private var inMemoryDb : Map[String, Transaction] = new HashMap[String, Transaction]){
 
   def fetch(name: String): Option[Transaction] = {
     inMemoryDb.get(name)

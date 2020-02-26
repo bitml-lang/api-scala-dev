@@ -2,7 +2,9 @@ package xyz.bitml.api.persistence
 
 import xyz.bitml.api.Participant
 
-class ParticipantStorage (private var inMemoryDb : Map[String, Participant]){
+import scala.collection.immutable.HashMap
+
+class ParticipantStorage (private var inMemoryDb : Map[String, Participant] = new HashMap[String, Participant]){
 
   def fetch(pubString : String): Option[Participant] = {
     inMemoryDb.get(pubString)
