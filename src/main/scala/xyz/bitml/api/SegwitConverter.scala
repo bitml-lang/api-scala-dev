@@ -1,6 +1,7 @@
 package xyz.bitml.api
 
 import com.typesafe.scalalogging.LazyLogging
+import fr.acinq.bitcoin.Crypto.PublicKey
 import fr.acinq.bitcoin.{ByteVector32, OutPoint, Script, ScriptWitness, Transaction, TxIn, TxOut}
 import scodec.bits.ByteVector
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
@@ -12,7 +13,7 @@ class SegwitConverter extends LazyLogging{
   def convertOutputP2PKH(script : ByteVector) : ByteVector = {
     Script.write(Script.pay2wpkh(Script.publicKeyHash(script)))
   }
-  // Generate a redeem stack from the corresponding redeem script. Valid for both PKH and SH.
+  // Generate a redeem stack from the corresponding redeem script. Valid for both PKH and SH. Does not work with multisig!
   def convertRedeem(script : ByteVector) : ScriptWitness = {
     ScriptWitness(Script.parse(script).map(x => Script.write(Seq(x)).drop(1)))
   }
@@ -61,7 +62,8 @@ class SegwitConverter extends LazyLogging{
       pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
     }
     else {
-      pubKeyScript = Script.write(Script.pay2wpkh(Script.publicKey(Script.parse(ss))))
+      val pk = Script.publicKey(Script.parse(ss))
+      pubKeyScript = Script.write(Script.pay2wpkh(PublicKey(pk)))
     }
 
     (resTx, pubKeyScript)
@@ -72,7 +74,8 @@ class SegwitConverter extends LazyLogging{
   // Move backwards through the tree and convert every non-segwit transaction into one.
   def convertTree(metadb : MetaStorage, txdb : TxStorage): Unit = {
     // build txid -> name map
-    val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
+    val oldIdMap = txdb.dump().map(x => (x._2.txid.reverse -> x._1))
+    logger.debug(oldIdMap.toString())
 
 
     // propagate the changes following our metadata.
@@ -93,14 +96,16 @@ class SegwitConverter extends LazyLogging{
       for (i <- toConvert) {
         // If the sigScript references one of our own transactions,  we can safely change it
         //  and update the referenced tx with the modified pubKeyScript
-        val prevStr = oldIdMap(cp.txIn(i._1).outPoint.hash)
-        val prevTx = txdb.fetch(prevStr)
-        if (prevTx.nonEmpty) {
-
+        logger.debug("Searching for tx with hash "+cp.txIn(i._1).outPoint.hash)
+        val searchStr = oldIdMap.get(cp.txIn(i._1).outPoint.hash)
+        if (searchStr.nonEmpty) {
+          val prevStr = searchStr.get
+          logger.debug("Retrieving tx with id "+prevStr)
+          val prevTx = txdb.fetch(prevStr)
           // Update the redeemScript and produce the matching PubKeyScript
           val isP2SH = i._2.chunkData.exists(_.chunkType match {
-            case ChunkType.SIG_P2PKH => true
-            case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => false
+            case ChunkType.SIG_P2PKH => false
+            case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
             case _ => logger.error("Unexpected processing of non-base index type"); true
           })
           val res = switchInput(cp, i._1, isP2SH)
@@ -118,10 +123,12 @@ class SegwitConverter extends LazyLogging{
               case ChunkType.SIG_P2PKH => ChunkType.SIG_P2WPKH
               case _ => logger.error("Unexpected processing of non-base index type"); f.chunkType
             },
-            data = ByteVector.empty // Even if we do have something in here it's most definitely wrong now.
+            data = f.chunkType match {
+              case ChunkType.SECRET_WIT | ChunkType.SECRET_IN => f.data // The script rewrite should preserve the expected value.
+              case _ => ByteVector.empty // Any signature (especially with sighash_all) will have to be remade.
+            }
           ))
-          m._2.indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))
-
+          metadb.save(m._1, m._2.copy(indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))))
         }
       }
       // Save the new transaction.

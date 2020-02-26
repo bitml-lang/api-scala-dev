@@ -1,14 +1,14 @@
 package xyz.bitml.api.serialization
 
 import org.json4s.CustomSerializer
-import org.json4s.JsonAST.{JArray, JField, JInt, JObject}
+import org.json4s.JsonAST.{JField, JObject, JString}
 import scodec.bits.ByteVector
 
 class ByteVectorSerializer extends CustomSerializer[ByteVector](format=>(
   {
-    case JObject(List(JField("arr", JArray(a: List[JInt])))) => ByteVector.apply(a.map(i => i.num.toByte))
+    case JObject(List(JField("hex",JString(a: String)))) => ByteVector.fromValidHex(a)
   },
   {
-    case x: ByteVector => JObject(List(JField(name = "arr", value = JArray(x.toArray.map(b => JInt(b.toInt)).toList))))
+    case x: ByteVector => JObject(List(JField("hex", JString(x.toHex))))
   }
 ))

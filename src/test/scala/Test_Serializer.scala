@@ -1,13 +1,13 @@
 import akka.actor.Address
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import fr.acinq.bitcoin.{Base58, Satoshi, Transaction}
+import fr.acinq.bitcoin.{Base58, Btc, Satoshi, Transaction}
 import org.json4s.Formats
 import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Participant, TxEntry}
-import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, TxStorage}
-import xyz.bitml.api.serialization.{ByteVectorSerializer, MetaStorageSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, TxStorageSerializer}
+import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
+import xyz.bitml.api.serialization.{ByteVectorSerializer, MetaStorageSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, StateSerializer, TxStorageSerializer}
 
 import scala.collection.immutable.HashMap
 
@@ -15,10 +15,12 @@ class Test_Serializer extends AnyFunSuite {
 
   test ("Serialization and deserialization of ByteVector with custom serializer") {
     val testarr = Array.apply(1.toByte, 2.toByte, 3.toByte)
-    val testVector = ByteVector.apply(testarr)
+    val testVector = ByteVector(testarr)
 
     implicit val formats: Formats = org.json4s.DefaultFormats + new ByteVectorSerializer()
-    val resultCheck = Serialization.read[ByteVector](Serialization.write(testVector))
+    val serialized = Serialization.write(testVector)
+    println(serialized)
+    val resultCheck = Serialization.read[ByteVector](serialized)
     assert(testVector.equals(resultCheck))
   }
 
@@ -103,5 +105,46 @@ class Test_Serializer extends AnyFunSuite {
     val serialized = Serialization.write(meta)
     val deserializeCheck = Serialization.read[MetaStorage](serialized)
     assert(deserializeCheck.equals(meta))
+  }
+
+  test ("Client state serialization/deserialization") {
+
+    //Dummy data
+
+    // Setup part storage
+    val privateKey = PrivateKey.fromBase58("cRp4uUnreGMZN8vB7nQFX6XWMHU5Lc73HMAhmcDEwHfbgRS66Cqp", Base58.Prefix.SecretKeyTestnet)._1
+    val publicKey = privateKey.publicKey
+    val dummyEndpoint = new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
+    val part1 = Participant("A", publicKey, dummyEndpoint)
+    val partdb = new ParticipantStorage()
+    partdb.save(part1.name, part1)
+
+    // Setup tx storage
+    val balzac_t_blank = Transaction.read("02000000013b4bb256e1b6f045b778016c5c63d4b082deab49f9b6067ffcae209dbdc4505d00000000060004766b5187ffffffff0100ca9a3b0000000017a91453c3f130b2e0f8d9a3a5b6aaf71804543076d4568700000000")
+    val balzac_t1_blank = Transaction.read("0200000001d758caddefba9ea104643d0cf7acad94c880c29162e963ecb421e3c127cefd9000000000070005766b012a87ffffffff0100ca9a3b0000000017a9146e99e54647eb6588d8a9de2be4d2dd016a1a741a8700000000")
+    val txdb = new TxStorage()
+    txdb.save("t", balzac_t_blank)
+    txdb.save("t1", balzac_t1_blank)
+
+    // Setup meta storage
+    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
+    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(42)))
+    val t_entry = new TxEntry(name = "t", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t_chunks)))
+    val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
+    val metadb = new MetaStorage()
+    metadb.save("t", t_entry)
+    metadb.save("t1", t1_entry)
+
+    // Create state
+    val state = State(partdb, txdb, metadb)
+
+
+    implicit val formats : Formats = org.json4s.DefaultFormats + new StateSerializer
+
+    val serialized = Serialization.writePretty(state)
+    println(serialized)
+    val deserializeCheck = Serialization.read[State](serialized)
+    assert(deserializeCheck.equals(state))
+
   }
 }
