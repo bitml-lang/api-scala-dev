@@ -1,4 +1,4 @@
-import fr.acinq.bitcoin.{Base58, Base58Check, Btc, Crypto, OP_0, OP_PUSHDATA, Protocol, Satoshi, Script, ScriptWitness, Transaction}
+import fr.acinq.bitcoin.{Base58, Base58Check, Btc, ByteVector32, Crypto, OP_0, OP_PUSHDATA, Protocol, Satoshi, Script, ScriptWitness, Transaction}
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
@@ -150,6 +150,10 @@ class Test_Converter extends AnyFunSuite {
     assert(metadb.fetch("t1").get.indexData(0).chunkData(0).chunkType == ChunkType.SECRET_WIT) // This has been correctly converted into one.
     assert(txdb.fetch("t").get.txOut(0).publicKeyScript.length == 34) // OP_0 :: OP_PUSHDATA(32 byte sha256)
     assert(txdb.fetch("t1").get.txIn(0).signatureScript.isEmpty) // The sigScript is now empty.
-    assert(txdb.fetch("t1").get.txIn(0).witness.stack.nonEmpty) // The witness contains the new script. (Correctness tested separately)
+    assert(txdb.fetch("t1").get.txIn(0).witness.stack.nonEmpty) // The witness contains the new script.
+
+    val scriptsha256 = (txdb.fetch("t").get.txOut(0).publicKeyScript).drop(2) // drop op_0 and op_pushdata
+    assert(ByteVector32(scriptsha256) == Crypto.sha256(txdb.fetch("t1").get.txIn(0).witness.stack.last)) // The WSH hash is the correct one.
+
   }
 }

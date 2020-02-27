@@ -137,7 +137,7 @@ class SegwitConverter extends LazyLogging{
 
 
     // build name -> txid map, then build an old id -> new id map
-    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid))
+    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid.reverse)) // the byteVector hash seems to be saved in little endian in the ild txid
     val txidSub = oldIdMap.map(f => (f._1 -> newIdMap(f._2)))
 
     txdb.dump().map(x => (x._1 -> {
