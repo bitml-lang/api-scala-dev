@@ -42,7 +42,7 @@ case class Client (private var state : State = State(), identity : PrivateKey) e
     state = tmpState
   }
 
-  // Start an ActorSystem with a predetermined config and the current state objects.
+  // Start an ActorSystem with a predetermined config and the current state objects. TODO: Ensure system name is consistent with participant's declared system.
   def listenMsg(configPath : String, systemName : String): Unit ={
     if (system.nonEmpty) {
       logger.error("System already active!")

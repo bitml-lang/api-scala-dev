@@ -10,8 +10,8 @@ class ParticipantStorage (private var inMemoryDb : Map[String, Participant] = ne
     inMemoryDb.get(pubString)
   }
 
-  def save(pubString : String, data: Participant): Unit = {
-    inMemoryDb = inMemoryDb.updated(pubString, data)
+  def save(data: Participant): Unit = {
+    inMemoryDb = inMemoryDb.updated(data.pubkey.toString(), data)
   }
 
   def dump() : Map[String, Participant] = {

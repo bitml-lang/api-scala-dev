@@ -11,8 +11,8 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
     inMemoryDb.get(name)
   }
 
-  def save(name: String, data: TxEntry): Unit = {
-    inMemoryDb = inMemoryDb.updated(name, data)
+  def save(data: TxEntry): Unit = {
+    inMemoryDb = inMemoryDb.updated(data.name, data)
   }
 
   def dump() : Map[String, TxEntry] = {
@@ -20,7 +20,8 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
   }
 
   // Find new data from incoming tx chunk info, validate it and add it to our own.
-  def update(name : String, data : TxEntry, matchingTx : Transaction): Unit  = {
+  def update(data : TxEntry, matchingTx : Transaction): Unit  = {
+    val name = data.name
     val localCopy = fetch(name).getOrElse({
       logger.error("Error validating data: No meta available for "+name)
       return

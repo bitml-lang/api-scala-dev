@@ -128,7 +128,7 @@ class SegwitConverter extends LazyLogging{
               case _ => ByteVector.empty // Any signature (especially with sighash_all) will have to be remade.
             }
           ))
-          metadb.save(m._1, m._2.copy(indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))))
+          metadb.save( m._2.copy(indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))))
         }
       }
       // Save the new transaction.

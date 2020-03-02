@@ -117,7 +117,7 @@ class Test_Serializer extends AnyFunSuite {
     val dummyEndpoint = new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
     val part1 = Participant("A", publicKey, dummyEndpoint)
     val partdb = new ParticipantStorage()
-    partdb.save(part1.pubkey.toString(), part1)
+    partdb.save(part1)
 
     // Setup tx storage
     val balzac_t_blank = Transaction.read("02000000013b4bb256e1b6f045b778016c5c63d4b082deab49f9b6067ffcae209dbdc4505d00000000060004766b5187ffffffff0100ca9a3b0000000017a91453c3f130b2e0f8d9a3a5b6aaf71804543076d4568700000000")
@@ -132,8 +132,8 @@ class Test_Serializer extends AnyFunSuite {
     val t_entry = new TxEntry(name = "t", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
     val metadb = new MetaStorage()
-    metadb.save("t", t_entry)
-    metadb.save("t1", t1_entry)
+    metadb.save(t_entry)
+    metadb.save(t1_entry)
 
     // Create state
     val state = State(partdb, txdb, metadb)

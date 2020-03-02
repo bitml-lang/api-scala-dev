@@ -141,8 +141,8 @@ class Test_Converter extends AnyFunSuite {
     val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
 
     val metadb = new MetaStorage()
-    metadb.save("t", t_entry)
-    metadb.save("t1", t1_entry)
+    metadb.save(t_entry)
+    metadb.save(t1_entry)
 
     val conv = new SegwitConverter()
     conv.convertTree(metadb, txdb)

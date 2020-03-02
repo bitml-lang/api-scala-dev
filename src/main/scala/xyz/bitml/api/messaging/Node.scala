@@ -29,7 +29,7 @@ class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends A
       val txName = resData.name
       val baseTx = txStorage.fetch(txName)
       if (baseTx.nonEmpty) {
-        metaStorage.update(txName, resData ,baseTx.get)
+        metaStorage.update(resData ,baseTx.get)
       }else{
         logger.error("Unable to find tx "+txName+" referenced by remote actor "+sender().toString())
       }

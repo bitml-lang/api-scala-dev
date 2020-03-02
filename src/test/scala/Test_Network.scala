@@ -97,7 +97,7 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     Thread.sleep(500)
 
     val txEntry = new TxEntry("TEST1", new HashMap[Int, IndexEntry]())
-    metadbA.save(txEntry.name, txEntry)
+    metadbA.save(txEntry)
 
     // Send a request with no matching base tx on the validation side. This will print an error on the nodeB side.
     nodeB ! Query(remoteEndpointA.toString, "TEST1")
@@ -155,8 +155,8 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     // Insert signatures from each participant into the respective network node.
     signer.fillEntry(t1, bTxEntry, kb)
     signer.fillEntry(t1, oTxEntry, ko)
-    metadbA.save(oTxEntry.name, oTxEntry)
-    metadbB.save(bTxEntry.name, bTxEntry)
+    metadbA.save(oTxEntry)
+    metadbB.save(bTxEntry)
 
     // nodeB(b participant) will ask nodeA(o participant) for his copy of T1's meta.
     println("Exchange start")
