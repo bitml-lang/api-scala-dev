@@ -2,22 +2,31 @@ package xyz.bitml.api
 
 import java.io.File
 
-import akka.actor.{ActorRef, ActorSystem, CoordinatedShutdown, Props}
+import akka.actor.{Actor, ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import xyz.bitml.api.messaging.{Node, Query}
+import xyz.bitml.api.messaging.{AskForSigs, Init, Listen, Node, Query, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
-case class Client (private var state : State = State(), identity : PrivateKey) extends LazyLogging{
+case class Client (private var state : State = State(), identity : PrivateKey) extends Actor with LazyLogging{
 
-  private var msgNode : ActorRef = _
-  private var system : ActorSystem = _
+  private var msgNode : Option[ActorRef] = Option.empty[ActorRef]
+  private var system : Option[ActorSystem] = Option.empty[ActorSystem]
 
   val ser = new Serializer()
   val conv = new SegwitConverter()
   val sig = new Signer()
+
+  override def receive : Receive = {
+    case Init(x) => initState(x)
+    case Listen(c,s) => listenMsg(c,s)
+    case StopListening() => shutdownMsg()
+    case TryAssemble(t) => assembleTx(t)
+    case AskForSigs(t) => retrieveSigs(t)
+    case _ => logger.error("Unexpected event type")
+  }
 
   // Load a state from an external json string, convert to witness and fill with signatures from our identity.
   def initState(jsonState : String) : Unit = {
@@ -35,24 +44,40 @@ case class Client (private var state : State = State(), identity : PrivateKey) e
 
   // Start an ActorSystem with a predetermined config and the current state objects.
   def listenMsg(configPath : String, systemName : String): Unit ={
+    if (system.nonEmpty) {
+      logger.warn("System already active! Shutting down...")
+      shutdownMsg()
+    }
     // Setup network
     val configFile = getClass.getClassLoader.
       getResource(configPath).getFile
     val config = ConfigFactory.parseFile(new File(configFile))
-    system = ActorSystem(systemName , config)
-    msgNode = system.actorOf(Props(classOf[Node], state.metadb, state.txdb), name = "ContractNode")
+    system = Option(ActorSystem(systemName , config))
+    msgNode = Option(system.get.actorOf(Props(classOf[Node], state.metadb, state.txdb), name = "ContractNode"))
   }
 
   // Stop the current ActorSystem
   def shutdownMsg(): Unit = {
-    CoordinatedShutdown(system).run(CoordinatedShutdown.clusterLeavingReason)
+    if (system.isEmpty) {
+      logger.warn("System already empty!")
+      return
+    }
+    CoordinatedShutdown(system.get).run(CoordinatedShutdown.clusterLeavingReason)
+    system = Option.empty
+    msgNode = Option.empty
   }
 
   // Ask any participant involved in the tx to share their signatures.
   def retrieveSigs(txName : String): Unit = {
+
+    val m = msgNode.getOrElse({
+      logger.error("Messaging node not initialized!")
+      return
+    })
+
     val partList = txPendingList(txName)
     for (p <- partList) {
-      msgNode ! Query(p.endpoint.toString, txName)
+       m ! Query(p.endpoint.toString, txName)
     }
   }
 
@@ -67,7 +92,7 @@ case class Client (private var state : State = State(), identity : PrivateKey) e
   def assembleTx(txName : String) : String = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
-      logger.error("Cannot assemble tx "+txName+": transaction data incomplete. ")
+      logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
       return ""
     }
     sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get).toString()
