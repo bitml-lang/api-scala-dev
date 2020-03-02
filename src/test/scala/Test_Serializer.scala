@@ -117,7 +117,7 @@ class Test_Serializer extends AnyFunSuite {
     val dummyEndpoint = new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
     val part1 = Participant("A", publicKey, dummyEndpoint)
     val partdb = new ParticipantStorage()
-    partdb.save(part1.name, part1)
+    partdb.save(part1.pubkey.toString(), part1)
 
     // Setup tx storage
     val balzac_t_blank = Transaction.read("02000000013b4bb256e1b6f045b778016c5c63d4b082deab49f9b6067ffcae209dbdc4505d00000000060004766b5187ffffffff0100ca9a3b0000000017a91453c3f130b2e0f8d9a3a5b6aaf71804543076d4568700000000")
@@ -138,13 +138,13 @@ class Test_Serializer extends AnyFunSuite {
     // Create state
     val state = State(partdb, txdb, metadb)
 
-
     implicit val formats : Formats = org.json4s.DefaultFormats + new StateSerializer
 
     val serialized = Serialization.writePretty(state)
     println(serialized)
     val deserializeCheck = Serialization.read[State](serialized)
     assert(deserializeCheck.equals(state))
+
 
   }
 }

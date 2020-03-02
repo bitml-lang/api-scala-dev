@@ -4,12 +4,13 @@ import java.io.File
 
 import akka.actor.{ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
+import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import xyz.bitml.api.messaging.Node
+import xyz.bitml.api.messaging.{Node, Query}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
-case class Client (private var state : State = State(), identity : PrivateKey) {
+case class Client (private var state : State = State(), identity : PrivateKey) extends LazyLogging{
 
   private var msgNode : ActorRef = _
   private var system : ActorSystem = _
@@ -47,18 +48,29 @@ case class Client (private var state : State = State(), identity : PrivateKey) {
     CoordinatedShutdown(system).run(CoordinatedShutdown.clusterLeavingReason)
   }
 
-  // TODO: Ask any participant involved in the tx to share their signatures.
+  // Ask any participant involved in the tx to share their signatures.
   def retrieveSigs(txName : String): Unit = {
+    val partList = txPendingList(txName)
+    for (p <- partList) {
+      msgNode ! Query(p.endpoint.toString, txName)
+    }
   }
 
-  // TODO: Verify if a certain tx is completable
-  def checkTx(txName : String) : Boolean = {
-    false
+  // Retrieve a list of participants whose data is missing to complete a certain tx.
+  def txPendingList(txName : String) : Seq[Participant] = {
+    val meta = state.metadb.fetch(txName).get
+    val pubs = meta.indexData.flatMap(_._2.chunkData.filter(_.data.isEmpty).map(_.owner.get))
+    pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
   }
 
-  // TODO: if completable, assemble given tx and return raw serialized form.
+  // If completable, assemble given tx and return raw serialized form.
   def assembleTx(txName : String) : String = {
-    "placeholder"
+    val canComplete = txPendingList(txName)
+    if (canComplete.nonEmpty) {
+      logger.error("Cannot assemble tx "+txName+": transaction data incomplete. ")
+      return ""
+    }
+    sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get).toString()
   }
 
   // TODO: A bunch of strategy-related logic
