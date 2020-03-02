@@ -45,8 +45,8 @@ case class Client (private var state : State = State(), identity : PrivateKey) e
   // Start an ActorSystem with a predetermined config and the current state objects.
   def listenMsg(configPath : String, systemName : String): Unit ={
     if (system.nonEmpty) {
-      logger.warn("System already active! Shutting down...")
-      shutdownMsg()
+      logger.error("System already active!")
+      return
     }
     // Setup network
     val configFile = getClass.getClassLoader.
