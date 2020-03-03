@@ -1,9 +1,10 @@
-import akka.actor.Address
+import akka.actor.{ActorSystem, Address, Props}
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Btc, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Participant, TxEntry}
+import xyz.bitml.api.messaging.{Init, Listen}
+import xyz.bitml.api.{ChunkEntry, ChunkType, Client, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer
 
@@ -74,25 +75,25 @@ eval Alice.T(_), Bob.T1(_,_)
 
     val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
-    val alice = Participant("Alice", a_pub, Address("akka", "test", "127.0.0.1", 25520))
+    val alice_p = Participant("Alice", a_pub, Address("akka", "test", "127.0.0.1", 25520))
     val b_priv = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
     val b_pub = b_priv.publicKey
-    val bob = Participant("Bob", b_pub, Address("akka", "test", "127.0.0.1", 25521))
+    val bob_p = Participant("Bob", b_pub, Address("akka", "test", "127.0.0.1", 25521))
     val o_priv = PrivateKey.fromBase58("cTyxEAoUSKcC9NKFCjxKTaXzP8i1ufEKtwVVtY6AsRPpRgJTZQRt", Base58.Prefix.SecretKeyTestnet)._1
     val o_pub = o_priv.publicKey
-    val oracle = Participant("Oracle", o_pub, Address("akka", "test", "127.0.0.1", 25522))
+    val oracle_p = Participant("Oracle", o_pub, Address("akka", "test", "127.0.0.1", 25522))
     val partdb = new ParticipantStorage()
-    partdb.save(alice)
-    partdb.save(bob)
-    partdb.save(oracle)
+    partdb.save(alice_p)
+    partdb.save(bob_p)
+    partdb.save(oracle_p)
 
     val t_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
     val t1_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(o_pub), data = ByteVector.empty))
-    val t_entry = new TxEntry(name = "T", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t_chunks)))
-    val t1_entry = new TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t1_chunks)))
+    val t_entry = TxEntry(name = "T", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t_chunks)))
+    val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t1_chunks)))
 
     val metadb = new MetaStorage()
     metadb.save(t_entry)
@@ -102,9 +103,24 @@ eval Alice.T(_), Bob.T1(_,_)
     val startingState = ser.prettyPrintState(State(partdb, txdb, metadb))
     println(startingState)
 
-    // TODO: Start 3 Client objects each with their participant's private key and the initial state json.
+    // Start 3 Client objects each with their participant's private key and the initial state json.
 
-    // TODO: Start their network interfaces.
+    val testSystem = ActorSystem(name = "internalTestSystem")
+
+
+    val alice = testSystem.actorOf(Props(classOf[Client],  a_priv))
+    val bob = testSystem.actorOf(Props(classOf[Client],  b_priv))
+    val oracle = testSystem.actorOf(Props(classOf[Client],  o_priv))
+
+    // Initializing the state will automatically convert the internal transactions into segwit.
+    alice ! Init(startingState)
+    bob ! Init(startingState)
+    oracle ! Init(startingState)
+
+    // Start their network interfaces.
+    alice ! Listen("test_application.conf", alice_p.endpoint.system)
+    bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
+    oracle ! Listen("test_application_o.conf", oracle_p.endpoint.system)
 
     // TODO: Verify T's TxOut 0 has independently been "modernized" into a p2wsh by each participant.
 

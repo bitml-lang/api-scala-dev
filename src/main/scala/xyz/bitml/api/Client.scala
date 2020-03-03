@@ -10,7 +10,9 @@ import xyz.bitml.api.messaging.{AskForSigs, Init, Listen, Node, Query, StopListe
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
-case class Client (private var state : State = State(), identity : PrivateKey) extends Actor with LazyLogging{
+case class Client (identity : PrivateKey) extends Actor with LazyLogging{
+
+  private var state : State = State()
 
   private var msgNode : Option[ActorRef] = Option.empty[ActorRef]
   private var system : Option[ActorSystem] = Option.empty[ActorSystem]
