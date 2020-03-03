@@ -1,12 +1,19 @@
+
+
+import scala.concurrent.duration._
 import akka.actor.{ActorSystem, Address, Props}
+import akka.pattern.ask
+import akka.util.Timeout
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import fr.acinq.bitcoin.{Base58, Btc, Transaction}
+import fr.acinq.bitcoin.{Base58, Btc, OP_0, Script, ScriptElt, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.messaging.{Init, Listen}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, TryAssemble}
 import xyz.bitml.api.{ChunkEntry, ChunkType, Client, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer
+
+import scala.concurrent.{Await, Future}
 
 class Test_Client extends AnyFunSuite {
 
@@ -101,7 +108,7 @@ eval Alice.T(_), Bob.T1(_,_)
 
     val ser = new Serializer()
     val startingState = ser.prettyPrintState(State(partdb, txdb, metadb))
-    println(startingState)
+    // println(startingState)
 
     // Start 3 Client objects each with their participant's private key and the initial state json.
 
@@ -122,11 +129,31 @@ eval Alice.T(_), Bob.T1(_,_)
     bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
     oracle ! Listen("test_application_o.conf", oracle_p.endpoint.system)
 
-    // TODO: Verify T's TxOut 0 has independently been "modernized" into a p2wsh by each participant.
+    // Verify T's TxOut 0 and the matching TxIn has independently been "modernized" into a p2wsh by each participant.
+    implicit val timeout : Timeout = Timeout(300 milliseconds)
+    val future = alice ? DumpState()
+    val res = ser.loadState(Await.result((future), timeout.duration).asInstanceOf[CurrentState].state)
+    // These have been correctly converted. Test_converter tests more on this separately.
+    assert(res.metadb.fetch("T1").get.indexData(0).chunkData(0).chunkType == ChunkType.SIG_P2WSH)
+    assert(res.metadb.fetch("T1").get.indexData(0).chunkData(1).chunkType == ChunkType.SIG_P2WSH)
+    assert(res.txdb.fetch("T").get.txOut(0).publicKeyScript.length == 34) // P2WSH: OP_0 :: PUSHDATA(32 byte sha256)
+    // This should be left as is as we can't change the pubKeyScript associated.
+    assert(res.metadb.fetch("T").get.indexData(0).chunkData(0).chunkType == ChunkType.SIG_P2PKH)
 
-    // TODO: Verify Alice can already assemble T on her own.
+    // Verify Alice can already assemble T on her own.
+    // This creates a problem of its own: if the assembled tx is non-segwit,
+    // the Signer can't update the txid referred by everyone else.
+    // At the moment this only creates a logger warning. TODO: evaluate.
+    val future2 = alice ? TryAssemble("T")
+    val res2 = Await.result(future2, timeout.duration).asInstanceOf[AssembledTx].serializedTx
+    // The node has produced a transaction.
+    assert(res2.length != 0)
+    // The signature has been produced and placed.
+    assert(Script.parse(Transaction.read(res2).txIn(0).signatureScript)(0) != Seq(OP_0)(0))
 
-    // TODO: Let Alice exchange signatures with both Bob and Oracle if prompted.
+    // Let Alice exchange signatures with both Bob and Oracle if prompted.
+    alice ! AskForSigs("T1")
+    Thread.sleep(1000)
 
     // TODO: Let Bob and Oracle exchange signatures to each other when prompted.
 

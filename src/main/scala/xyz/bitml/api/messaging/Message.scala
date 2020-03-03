@@ -19,3 +19,9 @@ case class Listen(config: String, systemName: String) extends Internal
 case class StopListening() extends Internal
 case class TryAssemble(txName: String) extends Internal
 case class AskForSigs(txName: String) extends Internal
+case class DumpState() extends Internal
+
+sealed trait Response extends PossiblyHarmful
+
+case class AssembledTx(txName: String, serializedTx : String) extends Response
+case class CurrentState(state: String) extends Response

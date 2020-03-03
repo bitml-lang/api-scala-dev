@@ -1,12 +1,13 @@
 package xyz.bitml.api
 
 import java.io.File
+import java.util.MissingResourceException
 
 import akka.actor.{Actor, ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import xyz.bitml.api.messaging.{AskForSigs, Init, Listen, Node, Query, StopListening, TryAssemble}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
@@ -25,8 +26,9 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     case Init(x) => initState(x)
     case Listen(c,s) => listenMsg(c,s)
     case StopListening() => shutdownMsg()
-    case TryAssemble(t) => assembleTx(t)
+    case TryAssemble(t) => sender() ! AssembledTx(t, assembleTx(t))
     case AskForSigs(t) => retrieveSigs(t)
+    case DumpState() => sender() ! CurrentState(ser.prettyPrintState(state))
     case _ => logger.error("Unexpected event type")
   }
 
@@ -90,7 +92,7 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
   }
 
-  // If completable, assemble given tx and return raw serialized form.
+  // If completable, assemble given tx and return raw serialized form. TODO: proper try/success/failure?
   def assembleTx(txName : String) : String = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
