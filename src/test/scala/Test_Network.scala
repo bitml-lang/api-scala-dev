@@ -42,7 +42,7 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
     nodeA = systemA.actorOf(Props(classOf[Node], metadbA, txdb), name = "HeartbeatNode")
     val addrA = nodeA.path.address // Local address A
 
-    remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
+    remoteEndpointA =  new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25000)
 
     // Setup network B
     val configFileB = getClass.getClassLoader.

@@ -1,14 +1,14 @@
 
 
 import scala.concurrent.duration._
-import akka.actor.{ActorSystem, Address, Props}
+import akka.actor.{ActorSystem, Address, CoordinatedShutdown, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Btc, OP_0, Script, ScriptElt, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, TryAssemble}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, StopListening, TryAssemble}
 import xyz.bitml.api.{ChunkEntry, ChunkType, Client, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer
@@ -82,13 +82,13 @@ eval Alice.T(_), Bob.T1(_,_)
 
     val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
-    val alice_p = Participant("Alice", a_pub, Address("akka", "test", "127.0.0.1", 25520))
+    val alice_p = Participant("Alice", a_pub, Address("akka", "test", "127.0.0.1", 25000))
     val b_priv = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
     val b_pub = b_priv.publicKey
-    val bob_p = Participant("Bob", b_pub, Address("akka", "test", "127.0.0.1", 25521))
+    val bob_p = Participant("Bob", b_pub, Address("akka", "test", "127.0.0.1", 25001))
     val o_priv = PrivateKey.fromBase58("cTyxEAoUSKcC9NKFCjxKTaXzP8i1ufEKtwVVtY6AsRPpRgJTZQRt", Base58.Prefix.SecretKeyTestnet)._1
     val o_pub = o_priv.publicKey
-    val oracle_p = Participant("Oracle", o_pub, Address("akka", "test", "127.0.0.1", 25522))
+    val oracle_p = Participant("Oracle", o_pub, Address("akka", "test", "127.0.0.1", 25002))
     val partdb = new ParticipantStorage()
     partdb.save(alice_p)
     partdb.save(bob_p)
@@ -98,7 +98,7 @@ eval Alice.T(_), Bob.T1(_,_)
       ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
     val t1_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(o_pub), data = ByteVector.empty))
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 1, owner = Option(o_pub), data = ByteVector.empty))
     val t_entry = TxEntry(name = "T", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t1_chunks)))
 
@@ -155,10 +155,30 @@ eval Alice.T(_), Bob.T1(_,_)
     alice ! AskForSigs("T1")
     Thread.sleep(1000)
 
-    // TODO: Let Bob and Oracle exchange signatures to each other when prompted.
+    // Let Bob and Oracle exchange signatures to each other when prompted.
+    bob ! AskForSigs("T1")
+    oracle ! AskForSigs("T1")
+    Thread.sleep(1000) // this is completely non-deterministic. TODO: event driven state reporting? totally doable with akka.
 
-    // TODO: Verify all 3 have all necessary info to assemble T1.
+    // Verify all 3 have all necessary info to assemble T1.
+    for (participant <- Seq(alice, bob, oracle)){
+      val future3 = participant ? TryAssemble("T1")
+      val res3 = Await.result(future3, timeout.duration).asInstanceOf[AssembledTx].serializedTx
+      // The node has produced a transaction.
+      assert(res3.length != 0)
+      // The signature has been produced and placed.
+      assert(Transaction.read(res3).txIn(0).witness.stack(0) != ByteVector.empty)
+      assert(Transaction.read(res3).txIn(0).witness.stack(1) != ByteVector.empty)
+    }
+    // debug: dump final state of each participant into json
+    for (participant <- Seq(alice, bob, oracle)) {
+      println(participant.path)
+      val futState = participant ? DumpState()
+      println(Await.result(futState, timeout.duration).asInstanceOf[CurrentState].state)
 
-    // TODO: (debug dump state of each participant into json?)
+      participant ! StopListening()
+    }
+    CoordinatedShutdown(testSystem).run(CoordinatedShutdown.unknownReason)
+    Thread.sleep(500)
   }
 }
