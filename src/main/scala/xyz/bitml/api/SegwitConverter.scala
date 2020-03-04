@@ -74,7 +74,7 @@ class SegwitConverter extends LazyLogging{
   // Move backwards through the tree and convert every non-segwit transaction into one.
   def convertTree(metadb : MetaStorage, txdb : TxStorage): Unit = {
     // build txid -> name map
-    val oldIdMap = txdb.dump().map(x => (x._2.txid.reverse -> x._1))
+    val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
     logger.debug(oldIdMap.toString())
 
 
@@ -97,7 +97,7 @@ class SegwitConverter extends LazyLogging{
         // If the sigScript references one of our own transactions,  we can safely change it
         //  and update the referenced tx with the modified pubKeyScript
         logger.debug("Searching for tx with hash "+cp.txIn(i._1).outPoint.hash)
-        val searchStr = oldIdMap.get(cp.txIn(i._1).outPoint.hash)
+        val searchStr = oldIdMap.get(cp.txIn(i._1).outPoint.hash.reverse)
         if (searchStr.nonEmpty) {
           val prevStr = searchStr.get
           logger.debug("Retrieving tx with id "+prevStr)
@@ -110,10 +110,12 @@ class SegwitConverter extends LazyLogging{
           })
           val res = switchInput(cp, i._1, isP2SH)
           cp = res._1
+
           val pks = res._2
 
           // Edit and save referenced Transaction with converted pubkeyscript
-          txdb.save(prevStr, switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks))
+          val newPrev = switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks)
+          txdb.save(prevStr, newPrev)
 
           // Convert our own info and update our IndexData
           val newChunks =  i._2.chunkData.map(f => f.copy(
@@ -137,17 +139,20 @@ class SegwitConverter extends LazyLogging{
 
 
     // build name -> txid map, then build an old id -> new id map
-    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid.reverse)) // the byteVector hash seems to be saved in little endian in the ild txid
+    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid)) // the byteVector hash seems to be saved in little endian in the outpoint.
     val txidSub = oldIdMap.map(f => (f._1 -> newIdMap(f._2)))
+    logger.debug(txidSub.toString)
 
-    txdb.dump().map(x => (x._1 -> {
+    val newdb = txdb.dump().map(x => (x._1 -> {
       // Scroll through the entire TxIn list and switch out outdated OutPoints.
       val newTxIn = x._2.txIn.map(f => new TxIn(
         signatureScript = f.signatureScript,
         sequence = f.sequence,
         outPoint = { // Switch txid if it's between the ones we tracked.
-          if (oldIdMap.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid), index = f.outPoint.index) else f.outPoint
-        }
+          logger.debug(f.outPoint.txid.reverse.toHex)
+          if (oldIdMap.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid).reverse, index = f.outPoint.index) else f.outPoint
+        },
+        witness = f.witness
       ))
 
       // Return the new transaction.
@@ -158,6 +163,8 @@ class SegwitConverter extends LazyLogging{
         txIn = newTxIn
       )
     }))
+    // Apply changes.
+    for (i <- newdb) txdb.save(i._1, i._2)
   }
 
 }

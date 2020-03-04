@@ -130,6 +130,10 @@ class Test_Converter extends AnyFunSuite {
     val balzac_t_blank = Transaction.read("02000000013b4bb256e1b6f045b778016c5c63d4b082deab49f9b6067ffcae209dbdc4505d00000000060004766b5187ffffffff0100ca9a3b0000000017a91453c3f130b2e0f8d9a3a5b6aaf71804543076d4568700000000")
     val balzac_t1_blank = Transaction.read("0200000001d758caddefba9ea104643d0cf7acad94c880c29162e963ecb421e3c127cefd9000000000070005766b012a87ffffffff0100ca9a3b0000000017a9146e99e54647eb6588d8a9de2be4d2dd016a1a741a8700000000")
 
+    // The outpoint hash of t1 correctly points to t (in different endianness?)
+    assert(balzac_t1_blank.txIn(0).outPoint.hash == balzac_t_blank.txid.reverse)
+    val oldid = balzac_t1_blank.txIn(0).outPoint.hash
+
     // Set up tx storage
     val txdb = new TxStorage()
     txdb.save("t", balzac_t_blank)
@@ -154,6 +158,9 @@ class Test_Converter extends AnyFunSuite {
 
     val scriptsha256 = (txdb.fetch("t").get.txOut(0).publicKeyScript).drop(2) // drop op_0 and op_pushdata
     assert(ByteVector32(scriptsha256) == Crypto.sha256(txdb.fetch("t1").get.txIn(0).witness.stack.last)) // The WSH hash is the correct one.
+
+    // The t1 outpoint still points to t, but with their new hashes.
+    assert(txdb.fetch("t1").get.txIn(0).outPoint.hash == txdb.fetch("t").get.txid.reverse && txdb.fetch("t1").get.txIn(0).outPoint.hash != oldid)
 
   }
 }

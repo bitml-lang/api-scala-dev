@@ -1,7 +1,6 @@
 package xyz.bitml.api
 
 import java.io.File
-import java.util.MissingResourceException
 
 import akka.actor.{Actor, ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
@@ -99,7 +98,9 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
       return ""
     }
-    sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get).toString()
+    val assembled = sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get)
+
+    assembled.toString()
   }
 
   // TODO: A bunch of strategy-related logic
