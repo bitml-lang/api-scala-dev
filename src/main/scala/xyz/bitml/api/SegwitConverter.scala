@@ -143,6 +143,10 @@ class SegwitConverter extends LazyLogging{
     val txidSub = oldIdMap.map(f => (f._1 -> newIdMap(f._2)))
     logger.debug(txidSub.toString)
 
+    substituteHashes(txdb, txidSub)
+  }
+
+  def substituteHashes(txdb : TxStorage, txidSub : Map[ByteVector32, ByteVector32]){
     val newdb = txdb.dump().map(x => (x._1 -> {
       // Scroll through the entire TxIn list and switch out outdated OutPoints.
       val newTxIn = x._2.txIn.map(f => new TxIn(
@@ -150,7 +154,7 @@ class SegwitConverter extends LazyLogging{
         sequence = f.sequence,
         outPoint = { // Switch txid if it's between the ones we tracked.
           logger.debug(f.outPoint.txid.reverse.toHex)
-          if (oldIdMap.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid).reverse, index = f.outPoint.index) else f.outPoint
+          if (txidSub.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid).reverse, index = f.outPoint.index) else f.outPoint
         },
         witness = f.witness
       ))
