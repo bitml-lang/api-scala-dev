@@ -111,6 +111,13 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       return ""
     }
     val assembled = sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get)
+    // log txid change upon completion of non-segwit transaction.
+    // TODO: propagate change locally and to other nodes?
+    // This would introduce a separate malleability problem.
+    // The best solution would be to only accept segwit contract inputs
+    if (assembled.txid != state.txdb.fetch(txName).get.txid){
+      logger.warn("Transaction "+ txName +" changed txid to "+ assembled.txid.toHex +" upon assembly.")
+    }
 
     assembled.toString()
   }
