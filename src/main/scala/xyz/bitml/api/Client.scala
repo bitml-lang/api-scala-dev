@@ -48,7 +48,7 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     state.partdb.fetch(identity.publicKey.toString()).getOrElse(logger.error("Identity doesn't match any of the contract participants!"))
   }
 
-  // Start an ActorSystem with a predetermined config and the current state objects. TODO: Ensure system name is consistent with participant's declared system.
+  // Start an ActorSystem with a predetermined config and the current state objects.
   def listenMsg(configPath : String, systemName : String): Unit ={
     if (system.nonEmpty) {
       logger.error("System already active!")
