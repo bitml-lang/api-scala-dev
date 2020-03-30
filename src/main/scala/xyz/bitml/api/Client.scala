@@ -43,6 +43,9 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
 
     // Save processed state as this client's new state.
     state = tmpState
+
+    // Verify whether our identity matches one of the participants
+    state.partdb.fetch(identity.publicKey.toString()).getOrElse(logger.error("Identity doesn't match any of the contract participants!"))
   }
 
   // Start an ActorSystem with a predetermined config and the current state objects. TODO: Ensure system name is consistent with participant's declared system.
@@ -57,6 +60,13 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     val config = ConfigFactory.parseFile(new File(configFile))
     system = Option(ActorSystem(systemName , config))
     msgNode = Option(system.get.actorOf(Props(classOf[Node], state.metadb, state.txdb), name = "ContractNode"))
+
+    // Check if the config data matches our participant's declared info.
+    // there are a few network configurations where they reasonably won't match, so this is not a critical error.
+    val declaredAddr = state.partdb.fetch(identity.publicKey.toString()).get.endpoint
+    if ((config.getInt("akka.remote.artery.canonical.port") != declaredAddr.port.get ) || (systemName != declaredAddr.system)) {
+      logger.warn("Contract-declared endpoint doesn't match node configuration for this participant!")
+    }
   }
 
   // Stop the current ActorSystem

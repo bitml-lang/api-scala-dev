@@ -71,9 +71,6 @@ eval Alice.T(_), Bob.T1(_,_)
      * - T1{index 0:{chunk 0:sig_sh[Bob], chunk 1:sig_sh[Oracle]}} // Redeem A.0 script.
      */
 
-    // TODO: Build common state -> json string
-
-
     val oracle_t_blank = Transaction.read("02000000017875f000ee77e9adac3224ad43c977b22b02f65339b7c69e1d7780f92e2e7fcb0000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff0100e1f5050000000017a91459f8b912203e01527f5feed3dfd6740773c8022d8700000000")
     val oracle_t1_2blank = Transaction.read("0200000001ad765fa02c697d04b393f012c6ea0b9dc471c60ca5832cc9622c591aecabc925000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e210237c53ebef2992c5b3f0efca8b849f4969095b31e597bdab292385bb132c30f3e52aeffffffff0100e1f505000000001976a914ba91ed34ad92a7c2aa2d764c73cd0f31a18df68088ac00000000")
     val txdb = new TxStorage()
@@ -130,7 +127,7 @@ eval Alice.T(_), Bob.T1(_,_)
     oracle ! Listen("test_application_o.conf", oracle_p.endpoint.system)
 
     // Verify T's TxOut 0 and the matching TxIn has independently been "modernized" into a p2wsh by each participant.
-    implicit val timeout : Timeout = Timeout(300 milliseconds)
+    implicit val timeout : Timeout = Timeout(1000 milliseconds)
     val future = alice ? DumpState()
     val res = ser.loadState(Await.result((future), timeout.duration).asInstanceOf[CurrentState].state)
     // These have been correctly converted. Test_converter tests more on this separately.
