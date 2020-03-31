@@ -19,7 +19,6 @@ class Test_Serializer extends AnyFunSuite {
 
     implicit val formats: Formats = org.json4s.DefaultFormats + new ByteVectorSerializer()
     val serialized = Serialization.write(testVector)
-    println(serialized)
     val resultCheck = Serialization.read[ByteVector](serialized)
     assert(testVector.equals(resultCheck))
   }
@@ -141,7 +140,7 @@ class Test_Serializer extends AnyFunSuite {
     implicit val formats : Formats = org.json4s.DefaultFormats + new StateSerializer
 
     val serialized = Serialization.writePretty(state)
-    println(serialized)
+    // println(serialized)
     val deserializeCheck = Serialization.read[State](serialized)
     assert(deserializeCheck.equals(state))
 

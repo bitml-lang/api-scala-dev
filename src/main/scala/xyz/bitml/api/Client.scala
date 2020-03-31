@@ -108,7 +108,12 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
       // Automatically start a retrieveSigs on failure. TODO: evaluate if we should.
       retrieveSigs(txName)
-      return ""
+      logger.debug("Waiting for responses...")
+      Thread.sleep(1000) // TODO: class-defined default timeout variable
+      if (txPendingList(txName).nonEmpty) {
+        logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
+        return ""
+      }
     }
     val assembled = sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get)
     // log txid change upon completion of non-segwit transaction.

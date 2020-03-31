@@ -127,7 +127,7 @@ eval Alice.T(_), Bob.T1(_,_)
     oracle ! Listen("test_application_o.conf", oracle_p.endpoint.system)
 
     // Verify T's TxOut 0 and the matching TxIn has independently been "modernized" into a p2wsh by each participant.
-    implicit val timeout : Timeout = Timeout(1000 milliseconds)
+    implicit val timeout : Timeout = Timeout(2000 milliseconds)
     val future = alice ? DumpState()
     val res = ser.loadState(Await.result((future), timeout.duration).asInstanceOf[CurrentState].state)
     // These have been correctly converted. Test_converter tests more on this separately.
@@ -148,14 +148,13 @@ eval Alice.T(_), Bob.T1(_,_)
     // The signature has been produced and placed.
     assert(Script.parse(Transaction.read(res2).txIn(0).signatureScript)(0) != Seq(OP_0)(0))
 
-    // Let Alice exchange signatures with both Bob and Oracle if prompted.
-    alice ! AskForSigs("T1")
-    Thread.sleep(1000)
+    // Alice has already started asking for signatures from the first TryAssemble.
+    // alice ! AskForSigs("T1")
 
     // Let Bob and Oracle exchange signatures to each other when prompted.
     bob ! AskForSigs("T1")
     oracle ! AskForSigs("T1")
-    Thread.sleep(1000) // this is completely non-deterministic. TODO: event driven state reporting? totally doable with akka.
+    Thread.sleep(3000) // this is completely non-deterministic. TODO: event driven state reporting? totally doable with akka.
 
     // Verify all 3 have all necessary info to assemble T1.
     for (participant <- Seq(alice, bob, oracle)){
