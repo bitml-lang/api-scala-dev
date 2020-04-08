@@ -2,12 +2,12 @@ package xyz.bitml.api.serialization
 
 import org.json4s.Formats
 import org.json4s.native.Serialization
+import xyz.bitml.api.TxEntry
 import xyz.bitml.api.persistence.State
-import xyz.bitml.api.{ChunkType, TxEntry}
 
 class Serializer {
 
-  implicit val formats: Formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumSerializer(ChunkType) + new ByteVectorSerializer() + new SatoshiSerializer() + new StateSerializer
+  implicit val formats: Formats = org.json4s.DefaultFormats + new ChunkEntrySerializer + new SatoshiSerializer + new StateSerializer
 
   def serializeTxEntry(entry: TxEntry): String = {
     Serialization.write(entry)

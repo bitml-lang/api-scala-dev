@@ -13,7 +13,7 @@ class ParticipantSerializer extends CustomSerializer[Participant](format => (
     case JObject(List(JField("name", name:JString), JField("pubkey", pubkey: JString), JField("endpoint", endpoint : JValue))) =>{
       implicit val formats : Formats = org.json4s.DefaultFormats + new AddressSerializer
 
-      new Participant(name.s, PublicKey(ByteVector.fromValidHex(pubkey.s)), Extraction.extract[Address](endpoint))
+      Participant(name.s, PublicKey(ByteVector.fromValidHex(pubkey.s)), Extraction.extract[Address](endpoint))
     }
 
   },{

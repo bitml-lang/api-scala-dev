@@ -126,8 +126,8 @@ class Test_Serializer extends AnyFunSuite {
     txdb.save("t1", balzac_t1_blank)
 
     // Setup meta storage
-    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
-    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(42)))
+    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.OTHER, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
+    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(42))) // This will be zeroed out on serialization
     val t_entry = new TxEntry(name = "t", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
     val metadb = new MetaStorage()
@@ -140,10 +140,12 @@ class Test_Serializer extends AnyFunSuite {
     implicit val formats : Formats = org.json4s.DefaultFormats + new StateSerializer
 
     val serialized = Serialization.writePretty(state)
-    // println(serialized)
+    println(serialized)
     val deserializeCheck = Serialization.read[State](serialized)
-    assert(deserializeCheck.equals(state))
-
+    assert(deserializeCheck.partdb.equals(state.partdb))
+    assert(deserializeCheck.txdb.equals(state.txdb))
+    assert(deserializeCheck.metadb.fetch("t").equals(state.metadb.fetch("t")))
+    assert(!deserializeCheck.metadb.fetch("t1").equals(state.metadb.fetch("t1")))
 
   }
 }
