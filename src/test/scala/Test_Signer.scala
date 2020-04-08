@@ -3,7 +3,7 @@ import fr.acinq.bitcoin.Crypto.PrivateKey
 import fr.acinq.bitcoin.{Base58, Base58Check, OutPoint, Satoshi, Transaction, TxIn, TxOut}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry}
+import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, Signer, TxEntry}
 import xyz.bitml.api.persistence.TxStorage
 
 import scala.collection.immutable.HashMap
@@ -315,8 +315,8 @@ class Test_Signer extends AnyFunSuite {
 
       // Build chunk data structure.
       val chunks = Seq(
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
       val indexData = new IndexEntry(tx2.txOut(0).amount, chunks)
 
       val txData = new TxEntry(name = "TEMP", indexData = HashMap(0 -> indexData))
@@ -393,8 +393,8 @@ class Test_Signer extends AnyFunSuite {
 
       // Build chunk data structure.
       val chunks = Seq(
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
       val indexData = new IndexEntry(tx2.txOut(0).amount, chunks)
 
       val txData = new TxEntry(name = "TEMP", indexData = HashMap(0 -> indexData))
@@ -468,8 +468,8 @@ class Test_Signer extends AnyFunSuite {
 
       // Build chunk data structure.
       val chunks = Seq(
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
-        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(pub2), data = ByteVector.empty),
+        new ChunkEntry(chunkType = ChunkType.SIG_P2WSH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(pub3), data = ByteVector.empty))
       val indexData = new IndexEntry(tx2.txOut(0).amount, chunks)
 
       val txData = new TxEntry(name = "TEMP", indexData = HashMap(0 -> indexData))

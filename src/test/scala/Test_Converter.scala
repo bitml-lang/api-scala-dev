@@ -2,7 +2,7 @@ import fr.acinq.bitcoin.{Base58, Base58Check, Btc, ByteVector32, Crypto, OP_0, O
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, SegwitConverter, TxEntry}
+import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, SegwitConverter, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 
 import scala.collection.immutable.HashMap
@@ -139,8 +139,8 @@ class Test_Converter extends AnyFunSuite {
     txdb.save("t", balzac_t_blank)
     txdb.save("t1", balzac_t1_blank)
 
-    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
-    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(42)))
+    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
+    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option.empty, data = ByteVector(42)))
     val t_entry = new TxEntry(name = "t", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
 

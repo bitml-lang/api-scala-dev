@@ -9,7 +9,7 @@ import fr.acinq.bitcoin.{Base58, Btc, OP_0, Script, ScriptElt, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, StopListening, TryAssemble}
-import xyz.bitml.api.{ChunkEntry, ChunkType, Client, IndexEntry, Participant, TxEntry}
+import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, Client, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer
 
@@ -92,10 +92,10 @@ eval Alice.T(_), Bob.T1(_,_)
     partdb.save(oracle_p)
 
     val t_chunks = Seq(
-      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
     val t1_chunks = Seq(
-      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 1, owner = Option(o_pub), data = ByteVector.empty))
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(o_pub), data = ByteVector.empty))
     val t_entry = TxEntry(name = "T", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Btc(1).toSatoshi ,chunkData = t1_chunks)))
 

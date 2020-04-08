@@ -12,7 +12,7 @@ import fr.acinq.bitcoin.{Base58, Btc, Transaction}
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Signer, TxEntry}
+import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, Signer, TxEntry}
 import xyz.bitml.api.messaging.{Heartbeat, Node, Ping, Pong, Query}
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 
@@ -144,13 +144,10 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
 
     // Start off from two blank TxEntry structures.
     val bTxEntry = new TxEntry("T1", HashMap[Int, IndexEntry](0 -> new IndexEntry(amt = Btc(1).toSatoshi, chunkData = Seq(
-      new ChunkEntry(ChunkType.SIG_P2SH, 0, Option(bpub), data = ByteVector.empty ),
-      new ChunkEntry(ChunkType.SIG_P2SH, 1, Option(opub), data = ByteVector.empty )
+      new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 0, Option(bpub), data = ByteVector.empty ),
+      new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 1, Option(opub), data = ByteVector.empty )
     ))))
-    val oTxEntry = new TxEntry("T1", HashMap[Int, IndexEntry](0 -> new IndexEntry(amt = Btc(1).toSatoshi, chunkData = Seq(
-      new ChunkEntry(ChunkType.SIG_P2SH, 0, Option(bpub), data = ByteVector.empty ),
-      new ChunkEntry(ChunkType.SIG_P2SH, 1, Option(opub), data = ByteVector.empty )
-    ))))
+    val oTxEntry = bTxEntry.copy()
 
     // Insert signatures from each participant into the respective network node.
     signer.fillEntry(t1, bTxEntry, kb)

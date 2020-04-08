@@ -5,7 +5,7 @@ import org.json4s.Formats
 import org.json4s.native.Serialization
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.{ChunkEntry, ChunkType, IndexEntry, Participant, TxEntry}
+import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.{ByteVectorSerializer, MetaStorageSerializer, PartStorageSerializer, SatoshiSerializer, Serializer, StateSerializer, TxStorageSerializer}
 
@@ -76,7 +76,7 @@ class Test_Serializer extends AnyFunSuite {
     val txdb = new TxStorage(inMemoryDb = new HashMap[String,Transaction]())
     txdb.save("TEST",Transaction.read("0100000001b021a77dcaad3a2da6f1611d2403e1298a902af8567c25d6e65073f6b52ef12d000000006a473044022056156e9f0ad7506621bc1eb963f5133d06d7259e27b13fcb2803f39c7787a81c022056325330585e4be39bcf63af8090a2deff265bc29a3fb9b4bf7a31426d9798150121022dfb538041f111bb16402aa83bd6a3771fa8aa0e5e9b0b549674857fafaf4fe0ffffffff0210270000000000001976a91415c23e7f4f919e9ff554ec585cb2a67df952397488ac3c9d1000000000001976a9148982824e057ccc8d4591982df71aa9220236a63888ac00000000"))
 
-    val chunks =  Seq(new ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(publicKey), data = ByteVector.empty))
+    val chunks =  Seq(new ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(publicKey), data = ByteVector.empty))
     val indexInfo = new IndexEntry(Satoshi(0), chunks)
 
     val empty = new TxEntry(name="TEST",
@@ -85,6 +85,7 @@ class Test_Serializer extends AnyFunSuite {
 
     val serialized = ser.serializeTxEntry(empty)
     val deserializeCheck = ser.deserializeTxEntry(serialized)
+    println(deserializeCheck)
     assert(deserializeCheck.equals(empty))
   }
 
@@ -93,7 +94,7 @@ class Test_Serializer extends AnyFunSuite {
     val privateKey = PrivateKey.fromBase58("cRp4uUnreGMZN8vB7nQFX6XWMHU5Lc73HMAhmcDEwHfbgRS66Cqp", Base58.Prefix.SecretKeyTestnet)._1
     val publicKey = privateKey.publicKey
 
-    val chunks =  Seq(new ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkIndex = 0, owner = Option(publicKey), data = ByteVector.empty))
+    val chunks =  Seq(new ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(publicKey), data = ByteVector.empty))
     val indexInfo = new IndexEntry(Satoshi(0), chunks)
     val empty = new TxEntry(name="TEST",
       indexData= HashMap(0 -> indexInfo))
@@ -126,8 +127,8 @@ class Test_Serializer extends AnyFunSuite {
     txdb.save("t1", balzac_t1_blank)
 
     // Setup meta storage
-    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.OTHER, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
-    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkIndex = 0, owner = Option.empty, data = ByteVector(42))) // This will be zeroed out on serialization
+    val t_chunks = Seq(ChunkEntry(chunkType = ChunkType.OTHER, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option.empty, data = ByteVector(1)))
+    val t1_chunks = Seq(ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option.empty, data = ByteVector(42))) // This will be zeroed out on serialization
     val t_entry = new TxEntry(name = "t", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t_chunks)))
     val t1_entry = new TxEntry(name = "t1", indexData = Map(0 -> IndexEntry(amt = Btc(10).toSatoshi ,chunkData = t1_chunks)))
     val metadb = new MetaStorage()
