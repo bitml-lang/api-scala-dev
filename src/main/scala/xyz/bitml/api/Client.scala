@@ -121,7 +121,8 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     // The best solution would be to only accept segwit contract inputs
     if (assembled.txid != state.txdb.fetch(txName).get.txid){
       logger.warn("Transaction "+ txName +" changed txid to "+ assembled.txid.toHex +" upon assembly.")
-      conv.substituteHashes(state.txdb, Map(state.txdb.fetch(txName).get.txid -> assembled.txid))
+      // Store assembled tx
+      state.txdb.save(txName, assembled)
     }
 
     assembled.toString()

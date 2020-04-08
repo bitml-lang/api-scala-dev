@@ -160,6 +160,8 @@ class Test_Converter extends AnyFunSuite {
     assert(ByteVector32(scriptsha256) == Crypto.sha256(txdb.fetch("t1").get.txIn(0).witness.stack.last)) // The WSH hash is the correct one.
 
     // The t1 outpoint still points to t, but with their new hashes.
+    println(txdb.fetch("t1").get.txIn(0).outPoint.hash)
+    println(txdb.fetch("t").get.txid.reverse)
     assert(txdb.fetch("t1").get.txIn(0).outPoint.hash == txdb.fetch("t").get.txid.reverse && txdb.fetch("t1").get.txIn(0).outPoint.hash != oldid)
 
   }

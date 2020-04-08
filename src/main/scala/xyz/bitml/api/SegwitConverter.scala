@@ -73,18 +73,12 @@ class SegwitConverter extends LazyLogging{
 
   // Move backwards through the tree and convert every non-segwit transaction into one.
   def convertTree(metadb : MetaStorage, txdb : TxStorage): Unit = {
-    // build txid -> name map
-    val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
-    logger.debug(oldIdMap.toString())
 
 
     // propagate the changes following our metadata.
     for (m <- metadb.dump()) {
-
-      val tx = txdb.fetch(m._1).get
-
-      // Create a deep copy that we can overwrite and save at the end.
-      var cp = Transaction.read(Transaction.write(tx).toHex)
+      // create txid -> name map
+      val oldIdMap = txdb.dump().map(x => (x._2.txid -> x._1))
 
       // Go through the inputData.
       // If we find a signature or secret specifying this is a P2PKH or P2SH, go through the conversion.
@@ -94,6 +88,9 @@ class SegwitConverter extends LazyLogging{
       }))
 
       for (i <- toConvert) {
+        // Create a deep copy that we can overwrite and save.
+        var cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)
+
         // If the sigScript references one of our own transactions,  we can safely change it
         //  and update the referenced tx with the modified pubKeyScript
         logger.debug("Searching for tx with hash "+cp.txIn(i._1).outPoint.hash)
@@ -108,14 +105,20 @@ class SegwitConverter extends LazyLogging{
             case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
             case _ => logger.error("Unexpected processing of non-base index type"); true
           })
+
           val res = switchInput(cp, i._1, isP2SH)
           cp = res._1
+          // Save partial conversion so that txdb can apply the txid changes
+          txdb.save(m._1, cp)
 
           val pks = res._2
 
           // Edit and save referenced Transaction with converted pubkeyscript
           val newPrev = switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks)
           txdb.save(prevStr, newPrev)
+
+          // Refresh cp so that we receive the txdb txid updates.
+          cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)
 
           // Convert our own info and update our IndexData
           val newChunks =  i._2.chunkData.map(f => f.copy(
@@ -133,43 +136,6 @@ class SegwitConverter extends LazyLogging{
           metadb.save( m._2.copy(indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))))
         }
       }
-      // Save the new transaction.
-      txdb.save(m._1, cp)
     }
-
-
-    // build name -> txid map, then build an old id -> new id map
-    val newIdMap = txdb.dump().map(x => (x._1 -> x._2.txid)) // the byteVector hash seems to be saved in little endian in the outpoint.
-    val txidSub = oldIdMap.map(f => (f._1 -> newIdMap(f._2)))
-    logger.debug(txidSub.toString)
-
-    substituteHashes(txdb, txidSub)
   }
-
-  // TODO: test this thoroughly. Is a single pass correct or should this be recursive?
-  def substituteHashes(txdb : TxStorage, txidSub : Map[ByteVector32, ByteVector32]){
-    val newdb = txdb.dump().map(x => (x._1 -> {
-      // Scroll through the entire TxIn list and switch out outdated OutPoints.
-      val newTxIn = x._2.txIn.map(f => new TxIn(
-        signatureScript = f.signatureScript,
-        sequence = f.sequence,
-        outPoint = { // Switch txid if it's between the ones we tracked.
-          logger.debug(f.outPoint.txid.reverse.toHex)
-          if (txidSub.keys.exists(_ == f.outPoint.txid)) new OutPoint(hash = txidSub(f.outPoint.txid).reverse, index = f.outPoint.index) else f.outPoint
-        },
-        witness = f.witness
-      ))
-
-      // Return the new transaction.
-      Transaction(
-        version = x._2.version,
-        txOut = x._2.txOut,
-        lockTime = x._2.lockTime,
-        txIn = newTxIn
-      )
-    }))
-    // Apply changes.
-    for (i <- newdb) txdb.save(i._1, i._2)
-  }
-
 }
