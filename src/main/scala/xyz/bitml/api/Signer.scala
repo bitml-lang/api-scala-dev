@@ -85,19 +85,19 @@ class Signer extends LazyLogging{
   def validateSig(toSign : Transaction, inputIndex : Int, amt : Satoshi, localEntry: ChunkEntry, sig : ByteVector) : Boolean = {
     // Recreate signing hash
     if (localEntry.owner.isEmpty ){
-      false
+      logger.warn("No owner!"); false
     } else {
       logger.debug("Verifying signature "+localEntry.chunkIndex)
       val redeemScript = localEntry.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2WPKH => genP2PKHDummy(localEntry.owner.get)
         case ChunkType.SIG_P2SH => Script.write(Seq(Script.parse(toSign.txIn(inputIndex).signatureScript).last)).drop(1)
         case ChunkType.SIG_P2WSH => ScriptWitness.unapply(toSign.txIn(inputIndex).witness).get.last
-        case _ => return false
+        case _ => logger.warn("Unexpected sig type!");return false
       }
       val sigVersion = localEntry.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH => SigVersion.SIGVERSION_BASE
         case ChunkType.SIG_P2WPKH | ChunkType.SIG_P2WSH => SigVersion.SIGVERSION_WITNESS_V0
-        case _ => return false
+        case _ => logger.warn("Unexpected sig type!");return false
       }
 
       val signData = Transaction.hashForSigning(toSign, inputIndex, redeemScript, bitcoin.SIGHASH_ALL, amt, sigVersion)
@@ -105,9 +105,7 @@ class Signer extends LazyLogging{
       val compactSig = Crypto.der2compact(sig)
       // Return signature validation
       Crypto.verifySignature(signData, compactSig, localEntry.owner.get)
-
     }
-
   }
 
   def assembleTx(tx : Transaction, data : TxEntry): Transaction = {

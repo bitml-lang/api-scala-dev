@@ -38,6 +38,8 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
         if (localChunk.data.isEmpty && remoteChunk.data.nonEmpty && signer.validateSig(matchingTx, k, localIndex.amt, localChunk, remoteChunk.data) ) {
           localChunk.data = remoteChunk.data
           logger.info("Added signature from " + localChunk.owner.get + " to tx " + name)
+        }else{
+          logger.warn("Rejected signature for tx " + name + " cause: " + (if (localChunk.data.nonEmpty || remoteChunk.data.isEmpty) "already full" else "Validation error"))
         }
       }
     }

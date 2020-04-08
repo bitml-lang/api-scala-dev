@@ -147,13 +147,19 @@ class Test_Network extends AnyFunSuite with BeforeAndAfterAll {
       new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 0, Option(bpub), data = ByteVector.empty ),
       new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 1, Option(opub), data = ByteVector.empty )
     ))))
-    val oTxEntry = bTxEntry.copy()
+    val oTxEntry = new TxEntry("T1", HashMap[Int, IndexEntry](0 -> new IndexEntry(amt = Btc(1).toSatoshi, chunkData = Seq(
+      new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 0, Option(bpub), data = ByteVector.empty ),
+      new ChunkEntry(ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, 1, Option(opub), data = ByteVector.empty )
+    ))))
 
     // Insert signatures from each participant into the respective network node.
     signer.fillEntry(t1, bTxEntry, kb)
     signer.fillEntry(t1, oTxEntry, ko)
     metadbA.save(oTxEntry)
     metadbB.save(bTxEntry)
+    println(metadbA.dump())
+    println(metadbB.dump())
+
 
     // nodeB(b participant) will ask nodeA(o participant) for his copy of T1's meta.
     println("Exchange start")
