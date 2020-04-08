@@ -45,7 +45,7 @@ class Test_Serializer extends AnyFunSuite {
   test ("Serialization/Deserialization of ParticipantStorage") {
     val priv1 = PrivateKey.fromBase58("QRY5zPUH6tWhQr2NwFXNpMbiLQq9u2ztcSZ6RwMPjyKv36rHP2xT", Base58.Prefix.SecretKeySegnet)._1
     val pub1 = priv1.publicKey
-    val p = new Participant(name = "test", pubkey = pub1, endpoint = Address("akka", "test", "10.11.12.13", 1234) )
+    val p = new Participant(name = "test", pubkey = List(pub1), endpoint = Address("akka", "test", "10.11.12.13", 1234) )
     val pstor = new ParticipantStorage(inMemoryDb = HashMap(pub1.toString() -> p))
 
     implicit val formats : Formats = org.json4s.DefaultFormats + new PartStorageSerializer
@@ -115,7 +115,7 @@ class Test_Serializer extends AnyFunSuite {
     val privateKey = PrivateKey.fromBase58("cRp4uUnreGMZN8vB7nQFX6XWMHU5Lc73HMAhmcDEwHfbgRS66Cqp", Base58.Prefix.SecretKeyTestnet)._1
     val publicKey = privateKey.publicKey
     val dummyEndpoint = new Address(protocol = "akka", system = "TestA", host = "127.0.0.1", port = 25520)
-    val part1 = Participant("A", publicKey, dummyEndpoint)
+    val part1 = Participant("A", List(publicKey), dummyEndpoint)
     val partdb = new ParticipantStorage()
     partdb.save(part1)
 

@@ -79,13 +79,13 @@ eval Alice.T(_), Bob.T1(_,_)
 
     val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
-    val alice_p = Participant("Alice", a_pub, Address("akka", "test", "127.0.0.1", 25000))
+    val alice_p = Participant("Alice", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
     val b_priv = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
     val b_pub = b_priv.publicKey
-    val bob_p = Participant("Bob", b_pub, Address("akka", "test", "127.0.0.1", 25001))
+    val bob_p = Participant("Bob", List(b_pub), Address("akka", "test", "127.0.0.1", 25001))
     val o_priv = PrivateKey.fromBase58("cTyxEAoUSKcC9NKFCjxKTaXzP8i1ufEKtwVVtY6AsRPpRgJTZQRt", Base58.Prefix.SecretKeyTestnet)._1
     val o_pub = o_priv.publicKey
-    val oracle_p = Participant("Oracle", o_pub, Address("akka", "test", "127.0.0.1", 25002))
+    val oracle_p = Participant("Oracle", List(o_pub), Address("akka", "test", "127.0.0.1", 25002))
     val partdb = new ParticipantStorage()
     partdb.save(alice_p)
     partdb.save(bob_p)

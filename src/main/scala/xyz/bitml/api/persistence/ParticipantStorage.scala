@@ -11,7 +11,9 @@ class ParticipantStorage (private var inMemoryDb : Map[String, Participant] = ne
   }
 
   def save(data: Participant): Unit = {
-    inMemoryDb = inMemoryDb.updated(data.pubkey.toString(), data)
+    for (x <- data.pubkey){
+      inMemoryDb = inMemoryDb.updated(x.toString(), data)
+    }
   }
 
   def dump() : Map[String, Participant] = {
