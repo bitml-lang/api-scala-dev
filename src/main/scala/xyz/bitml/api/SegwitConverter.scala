@@ -146,6 +146,7 @@ class SegwitConverter extends LazyLogging{
     substituteHashes(txdb, txidSub)
   }
 
+  // TODO: test this thoroughly. Is a single pass correct or should this be recursive?
   def substituteHashes(txdb : TxStorage, txidSub : Map[ByteVector32, ByteVector32]){
     val newdb = txdb.dump().map(x => (x._1 -> {
       // Scroll through the entire TxIn list and switch out outdated OutPoints.
