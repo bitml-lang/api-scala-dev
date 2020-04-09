@@ -6,7 +6,8 @@ import akka.actor.{Actor, ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble}
+import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble, preInit}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
@@ -25,7 +26,8 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     case Init(x) => initState(x)
     case Listen(c,s) => listenMsg(c,s)
     case StopListening() => shutdownMsg()
-    case TryAssemble(t) => sender() ! AssembledTx(t, assembleTx(t))
+    case preInit() => preInit()
+    case TryAssemble(t) => sender() ! assembleTx(t)
     case AskForSigs(t) => retrieveSigs(t)
     case DumpState() => sender() ! CurrentState(ser.prettyPrintState(state))
     case _ => logger.error("Unexpected event type")
@@ -101,8 +103,15 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
   }
 
+  // Retrieve a list of participants with missing data at the expected privacy level.
+  def txPendingPriv(txName: String, privacyLevel: ChunkPrivacy) = {
+    val meta = state.metadb.fetch(txName).get
+    val pubs = meta.indexData.flatMap(_._2.chunkData.filter(x => x.data.isEmpty && x.chunkPrivacy == privacyLevel).map(_.owner.get))
+    pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
+  }
+
   // If completable, assemble given tx and return raw serialized form. TODO: proper try/success/failure?
-  def assembleTx(txName : String) : String = {
+  def assembleTx(txName : String) : AssembledTx = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
       logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
@@ -112,7 +121,7 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       Thread.sleep(1000) // TODO: class-defined default timeout variable
       if (txPendingList(txName).nonEmpty) {
         logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
-        return ""
+        return null
       }
     }
     val assembled = sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get)
@@ -125,9 +134,28 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       state.txdb.save(txName, assembled)
     }
 
-    assembled.toString()
+    AssembledTx(txName, assembled.toString())
   }
 
-  // TODO: A bunch of strategy-related logic
+  // We won't release our TInit signature until all chunks marked with PUBLIC have been shared with us.
+  def preInit(): Unit ={
+    val m = msgNode.getOrElse({
+      logger.error("Messaging node not initialized!")
+      return
+    })
 
+    var missing = Set[Participant]()
+
+    val metaSet = state.metadb.dump().keySet
+    for (t <- metaSet) {
+      val tMiss = txPendingPriv(t, ChunkPrivacy.PUBLIC)
+      missing = missing ++ tMiss.toSet
+      for (p <- tMiss) m ! Query(p.endpoint.toString, t)
+    }
+    if (missing.isEmpty) {
+      // TODO: Mark TInit as public now that we have verified ownership of every public chunk
+    } else {
+      logger.info("Preinit: Missing chunk info from " + missing)
+    }
+  }
 }

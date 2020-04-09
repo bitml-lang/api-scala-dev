@@ -17,9 +17,14 @@ case class Query(endpoint : String, txMeta: String) extends Internal
 case class Init(jsonState: String) extends Internal
 case class Listen(config: String, systemName: String) extends Internal
 case class StopListening() extends Internal
+case class DumpState() extends Internal
+
 case class TryAssemble(txName: String) extends Internal
 case class AskForSigs(txName: String) extends Internal
-case class DumpState() extends Internal
+
+case class preInit() extends Internal
+case class askAuth(txName: String) extends Internal
+case class grantAuth(txName: String) extends Internal
 
 sealed trait Response extends PossiblyHarmful
 
