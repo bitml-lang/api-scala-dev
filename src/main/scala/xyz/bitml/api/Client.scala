@@ -158,4 +158,9 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
       logger.info("Preinit: Missing chunk info from " + missing)
     }
   }
+
+  // Verify if we need one or more participants' authorization data to complete a transaction and return their set.
+  def checkAuth(txName : String): Unit ={
+    txPendingPriv(txName, ChunkPrivacy.AUTH).filter(p=> p != state.partdb.fetch(identity.publicKey.toString()).get)
+  }
 }
