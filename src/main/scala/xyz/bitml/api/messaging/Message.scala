@@ -8,11 +8,13 @@ case class Ping() extends Event
 case class Pong() extends Event
 case class Request(txMeta: String) extends Event
 case class Data(serializedTx: String) extends Event
+case class Authorize(txName: String) extends Event
 
 sealed trait Internal extends PossiblyHarmful
 
 case class Heartbeat(endpoint : String) extends Internal
 case class Query(endpoint : String, txMeta: String) extends Internal
+case class RequireAuth(endpoint: String, txName: String) extends Internal
 
 case class Init(jsonState: String) extends Internal
 case class Listen(config: String, systemName: String) extends Internal
@@ -22,9 +24,9 @@ case class DumpState() extends Internal
 case class TryAssemble(txName: String) extends Internal
 case class AskForSigs(txName: String) extends Internal
 
-case class preInit() extends Internal
-case class askAuth(txName: String) extends Internal
-case class grantAuth(txName: String) extends Internal
+case class PreInit() extends Internal
+case class AskAuth(txName: String) extends Internal
+case class GrantAuth(txName: String) extends Internal
 
 sealed trait Response extends PossiblyHarmful
 

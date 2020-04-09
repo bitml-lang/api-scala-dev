@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble, preInit}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble, PreInit}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
@@ -26,7 +26,7 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
     case Init(x) => initState(x)
     case Listen(c,s) => listenMsg(c,s)
     case StopListening() => shutdownMsg()
-    case preInit() => preInit()
+    case PreInit() => preInit()
     case TryAssemble(t) => sender() ! assembleTx(t)
     case AskForSigs(t) => retrieveSigs(t)
     case DumpState() => sender() ! CurrentState(ser.prettyPrintState(state))
