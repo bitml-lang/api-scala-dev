@@ -33,7 +33,6 @@ class Node  (val metaStorage : MetaStorage, val txStorage : TxStorage) extends A
       }else{
         logger.error("Unable to find tx "+txName+" referenced by remote actor "+sender().toString())
       }
-    case Authorize(txName) => null // TODO: Auth handling
     case _ => logger.warn("Unexpected message from " + sender().toString())
   }
 
