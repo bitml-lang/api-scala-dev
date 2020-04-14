@@ -6,6 +6,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
 import fr.acinq.bitcoin.{Base58, Btc, OP_0, Satoshi, Script, ScriptElt, Transaction}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, StopListening, TryAssemble}
@@ -15,7 +16,20 @@ import xyz.bitml.api.serialization.Serializer
 
 import scala.concurrent.{Await, Future}
 
-class Test_Client extends AnyFunSuite {
+class Test_Client extends AnyFunSuite with BeforeAndAfterAll{
+
+  private var testSystem : ActorSystem = _
+
+  override def beforeAll(): Unit = {
+    testSystem = ActorSystem(name = "internalTestSystem")
+    super.beforeAll()
+  }
+
+  override def afterAll(): Unit = {
+    CoordinatedShutdown(testSystem).run(CoordinatedShutdown.unknownReason)
+    Thread.sleep(500)
+    super.afterAll()
+  }
 
 
   test("BitML compiler example"){
@@ -119,7 +133,6 @@ T1:[0:[0:(P2PKH from B, P2PKH from A)]]
     val a_priv = PrivateKey.fromBase58("cUnBMKCcvtpuVcfWajJBEF9uQaeNJmcRM6Vasw1vj3ZkiaoAGEuH", Base58.Prefix.SecretKeyTestnet)._1
 
     // Start an actor
-    val testSystem = ActorSystem(name = "internalTestSystem")
     val alice = testSystem.actorOf(Props[Client])
 
     // Initialize Alice with the state information.
@@ -138,8 +151,6 @@ T1:[0:[0:(P2PKH from B, P2PKH from A)]]
 
 
     alice ! StopListening()
-    CoordinatedShutdown(testSystem).run(CoordinatedShutdown.unknownReason)
-    Thread.sleep(500)
   }
     /* This test broke while updating the code to follow BitML spec. It will stay disabled for the moment.
   test("Signature exchange and transaction assembly based on Balzac.Oracle"){
