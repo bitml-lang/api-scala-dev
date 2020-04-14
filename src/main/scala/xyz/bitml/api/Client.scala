@@ -11,9 +11,10 @@ import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
-case class Client (identity : PrivateKey) extends Actor with LazyLogging{
+case class Client() extends Actor with LazyLogging{
 
   private var state : State = State()
+  private var identity : PrivateKey = _
 
   private var msgNode : Option[ActorRef] = Option.empty[ActorRef]
   private var system : Option[ActorSystem] = Option.empty[ActorSystem]
@@ -23,7 +24,7 @@ case class Client (identity : PrivateKey) extends Actor with LazyLogging{
   val sig = new Signer()
 
   override def receive : Receive = {
-    case Init(x) => initState(x)
+    case Init(pk, x) => identity = pk; initState(x)
     case Listen(c,s) => listenMsg(c,s)
     case StopListening() => shutdownMsg()
     case PreInit() => preInit()

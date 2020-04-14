@@ -1,6 +1,7 @@
 package xyz.bitml.api.messaging
 
 import akka.actor.PossiblyHarmful
+import fr.acinq.bitcoin.Crypto.PrivateKey
 
 sealed trait Event
 
@@ -14,7 +15,7 @@ sealed trait Internal extends PossiblyHarmful
 case class Heartbeat(endpoint : String) extends Internal
 case class Query(endpoint : String, txMeta: String) extends Internal
 
-case class Init(jsonState: String) extends Internal
+case class Init(identity: PrivateKey, jsonState: String) extends Internal
 case class Listen(config: String, systemName: String) extends Internal
 case class StopListening() extends Internal
 case class DumpState() extends Internal
