@@ -115,14 +115,20 @@ case class Client() extends Actor with LazyLogging{
   def assembleTx(txName : String) : AssembledTx = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
-      logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
-      // Automatically start a retrieveSigs on failure. TODO: evaluate if we should.
-      retrieveSigs(txName)
-      logger.debug("Waiting for responses...")
-      Thread.sleep(1000) // TODO: class-defined default timeout variable
-      if (txPendingList(txName).nonEmpty) {
+      // IF we're the only participant, we will need to add the missing non-signature data.
+      if (!canComplete.exists(p => p != state.partdb.fetch(identity.publicKey.toString()).get)) {
+        //TODO: Insert element as hex string -> ByteVector
+      }else{ // If other participants' info is missing (either by lack of authorization or no response), query them again.
         logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
-        return null
+        // Automatically start a retrieveSigs on failure.
+        retrieveSigs(txName)
+        logger.debug("Waiting for responses...")
+        Thread.sleep(1000) // TODO: class-defined default timeout variable
+        val newMissing = txPendingList(txName)
+        if (newMissing.nonEmpty) {
+          logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+newMissing.map(_.name))
+          return null
+        }
       }
     }
     val assembled = sig.assembleTx(state.txdb.fetch(txName).get, state.metadb.fetch(txName).get)
@@ -161,7 +167,7 @@ case class Client() extends Actor with LazyLogging{
   }
 
   // Verify if we need one or more participants' authorization data to complete a transaction and return their set.
-  def checkAuth(txName : String): Unit ={
+  def checkAuth(txName : String): Seq[Participant] ={
     txPendingPriv(txName, ChunkPrivacy.AUTH).filter(p=> p != state.partdb.fetch(identity.publicKey.toString()).get)
   }
 }
