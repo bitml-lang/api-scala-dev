@@ -24,8 +24,7 @@ case class TryAssemble(txName: String) extends Internal
 case class AskForSigs(txName: String) extends Internal
 
 case class PreInit() extends Internal
-case class AskAuth(txName: String) extends Internal
-case class GrantAuth(txName: String) extends Internal
+case class Authorize(txName: String) extends Internal
 
 sealed trait Response extends PossiblyHarmful
 

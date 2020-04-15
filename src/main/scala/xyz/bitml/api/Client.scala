@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Node, Query, StopListening, TryAssemble, PreInit}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, Authorize, CurrentState, DumpState, Init, Internal, Listen, Node, PreInit, Query, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
@@ -30,6 +30,7 @@ case class Client() extends Actor with LazyLogging{
     case PreInit() => preInit()
     case TryAssemble(t) => sender() ! assembleTx(t)
     case AskForSigs(t) => retrieveSigs(t)
+    case Authorize(t) => authorize(t)
     case DumpState() => sender() ! CurrentState(ser.prettyPrintState(state))
     case _ => logger.error("Unexpected event type")
   }
@@ -169,5 +170,22 @@ case class Client() extends Actor with LazyLogging{
   // Verify if we need one or more participants' authorization data to complete a transaction and return their set.
   def checkAuth(txName : String): Seq[Participant] ={
     txPendingPriv(txName, ChunkPrivacy.AUTH).filter(p=> p != state.partdb.fetch(identity.publicKey.toString()).get)
+  }
+
+  // Switch any AUTH chunk we own in a transaction into PUBLIC. This will allow us to share their content if asked.
+  def authorize(txName : String): Unit = {
+    val toAuth = state.metadb.fetch(txName).get
+    val authorized = toAuth.indexData.map(f => ({
+      // Any chunk that we own inside the transaction is switched from AUTH to PUBLIC
+      val newChunks = f._2.chunkData.map(c =>
+        if (state.partdb.fetch(c.owner.get.toString()) == state.partdb.fetch(identity.publicKey.toString()))
+          c.copy(
+            chunkPrivacy = c.chunkPrivacy match {
+              case ChunkPrivacy.AUTH => ChunkPrivacy.PUBLIC
+            })
+        else c)
+      f.copy(_2 = f._2.copy(chunkData = newChunks))
+    }))
+    state.metadb.save(toAuth.copy(indexData = authorized))
   }
 }
