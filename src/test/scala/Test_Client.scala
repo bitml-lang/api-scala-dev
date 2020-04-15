@@ -335,6 +335,98 @@ T1: P2SH (Tinit) sigs from A and B (chunks 0,1 of index 0)
 T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
   ...
      */
+
+
+  }
+
+  test("Timed commitment") {
+    /*
+    #lang bitml
+
+(participant "A" "0339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe1")
+(participant "B" "034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809")
+
+(define (txA) "tx:0200000001c75e1b501f7a1691b16d06398b4235ab35e11ccda3c3f9160d68739c84d435ed00000000e4483045022100ad5f0022e6ae8e789a97ca9497b8d307690b96ddbfcdf822711b1983b328d26702204f276374584292322c1ad33dc7b67600673ace464e9c60990de7a0123933803c014730440220055c42ae93321b4061055c782be11d3392c84ff34b1d4fbbe3a9e208f63518170220231d7712a4d36e5397264bfc8db89fd1d13d64937ee886fb9872f260bf979760014c516b6b006c766c766b7c6b5221034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809210339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe152aeffffffff01d5ea0600000000001976a914ded135b86a7ff97aece531c8b97dc8a3cb3ddc7488ac00000000@0")
+(define (txFee) "tx:02000000013ea7dd4d036b9a3048992e9c7e4b8c054e7949d08d233005aa79c50ee92ff0a800000000e3483045022100f956e4b07562a209662b42ab0b6d26784de59470d992a542c207e74bf03776d5022071a5089744aa25316d29cb9d1e9bd28f5f50eba6c2c5b57177bf0a17c35308a601463043021f26ce5a6c343fcb5edf3a06dbb95006cbf063393ec7b5beebd16e2c8120c059022015c4afec46a1c04d1dcfbf8e414d9f83d0a008c91b1a96f6b499edec2b8d1d48014c516b6b006c766c766b7c6b5221034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809210339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe152aeffffffff01d5ea0600000000001976a914ded135b86a7ff97aece531c8b97dc8a3cb3ddc7488ac00000000@0")
+
+(debug-mode)
+
+(contract
+ (pre (deposit "A" 0.00453333 (ref (txA)))
+      (fee "A" 0.00453333 (ref (txFee)))
+      (secret "A" a "b472a266d0bd89c13706a4132ccfb16f7c3b9fcb"))
+
+ (choice (reveal (a) (withdraw "A"))
+      (after 1550000 (withdraw "B")))
+
+ (check-liquid))
+
+ const privA = _ removed
+
+const sec_a:string = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+
+const pubkeyA6 = pubkey:0339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe1
+const pubkeyB1 = pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809
+const pubkeyB3 = pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809
+const pubkeyB5 = pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809
+const pubkeyA2 = pubkey:0339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe1
+const pubkeyA4 = pubkey:0339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe1
+
+const pubkeyB = pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809
+const pubkeyA = pubkey:0339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe1
+
+transaction Tinit {
+ input = [ tx:0200000001c75e1b501f7a1691b16d06398b4235ab35e11ccda3c3f9160d68739c84d435ed00000000e4483045022100ad5f0022e6ae8e789a97ca9497b8d307690b96ddbfcdf822711b1983b328d26702204f276374584292322c1ad33dc7b67600673ace464e9c60990de7a0123933803c014730440220055c42ae93321b4061055c782be11d3392c84ff34b1d4fbbe3a9e208f63518170220231d7712a4d36e5397264bfc8db89fd1d13d64937ee886fb9872f260bf979760014c516b6b006c766c766b7c6b5221034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809210339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe152aeffffffff01d5ea0600000000001976a914ded135b86a7ff97aece531c8b97dc8a3cb3ddc7488ac00000000@0:sig(privA);
+ tx:02000000013ea7dd4d036b9a3048992e9c7e4b8c054e7949d08d233005aa79c50ee92ff0a800000000e3483045022100f956e4b07562a209662b42ab0b6d26784de59470d992a542c207e74bf03776d5022071a5089744aa25316d29cb9d1e9bd28f5f50eba6c2c5b57177bf0a17c35308a601463043021f26ce5a6c343fcb5edf3a06dbb95006cbf063393ec7b5beebd16e2c8120c059022015c4afec46a1c04d1dcfbf8e414d9f83d0a008c91b1a96f6b499edec2b8d1d48014c516b6b006c766c766b7c6b5221034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809210339bd7fade9167e09681d68c5fc80b72166fe55bbb84211fd12bde1d57247fbe152aeffffffff01d5ea0600000000001976a914ded135b86a7ff97aece531c8b97dc8a3cb3ddc7488ac00000000@0:sig(privA) ]
+ output = 0.00876666 BTC : fun(a:string, sB, sA) . (( (hash160(a) == hash:9f3df038eeadc0c240fb7f82e31fdfe46804fc7c && size(a) >= 128 && versig(pubkeyB1, pubkeyA2; sB, sA)) ||
+ versig(pubkeyB3, pubkeyA4; sB, sA) ))
+}
+
+const sigBT1 : signature = sig:30450221008e8cf2da8535b488dab5234a8a6cc942d4f3dbbf0993a0be77aa5d80f520c1fa02203e407d58fe6dc8eeca8478c9c0c0e43e5cc2b25567716489f8358b157aa9dacc01[pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809]
+//received from Bob
+
+transaction T1 {
+ input = [ Tinit@0:sec_a sigBT1 sig(privA) ]
+ output = 0.00846666 BTC : fun(sB, sA) . versig(pubkeyB5, pubkeyA6; sB, sA)
+}
+
+const sigBT2 : signature = sig:3045022100fff909e25bcc800deebce554eb24b68080f2b02290b41076ad5cfb8b026453740220725b65455de27a643d74ac2deeccc3cb2bb3ba5c486bd19a2fc7c9034228e0f801[pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809]
+//received from Bob
+
+transaction T2 {
+ input = [ T1@0:  sigBT2 sig(privA) ]
+ output = 0.00816666 BTC : fun(x) . versig(pubkeyA; x)
+
+}
+
+const sigBT3 : signature = sig:3045022100c58572e8e1818ebbef2111da049a27f93cac791fc9d881acc48e43075382f8fb022032b2ff112f414463f884ccfcf427b4c952826e338779de63c3055d57b6ab89a501[pubkey:034a7192e922118173906555a39f28fa1e0b65657fc7f403094da4f85701a5f809]
+//received from Bob
+const sigAT3 : signature = _
+
+transaction T3 {
+ input = [ Tinit@0: "0" sigBT3 sig(privA) ]
+ output = 0.00846666 BTC : fun(x) . versig(pubkeyB; x)
+ absLock = block 1550000
+}
+
+eval sig(privA) of Tinit@0, sig(privA) of Tinit@1,
+    sig(privA) of T1, sig(privA) of T2, sig(privA) of T3,
+    Tinit, T1, T2 //TODO: the right evals
+
+    Build state
+    //TODO: switch a,b pubkeys with the ones from known private keys (we need to sign the transactions in the test itself)
+    //TODO: build a common balzac intermediate representation that matches both participants' views.
+    // That would be: sigBT* empty, no secret, etc.
+
+     */
+
+    val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
+    val a_pub = a_priv.publicKey
+    val alice_p = Participant("Alice", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
+    val b_priv = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
+    val b_pub = b_priv.publicKey
+    val bob_p = Participant("Bob", List(b_pub), Address("akka", "test", "127.0.0.1", 25001))
+
   }
 
 
