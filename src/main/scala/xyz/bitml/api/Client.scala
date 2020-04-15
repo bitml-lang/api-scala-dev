@@ -127,7 +127,13 @@ case class Client() extends Actor with LazyLogging{
         Thread.sleep(1000) // TODO: class-defined default timeout variable
         val newMissing = txPendingList(txName)
         if (newMissing.nonEmpty) {
-          logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+newMissing.map(_.name))
+          // If at least some of the missing data is a participant's authorization, reflect more specific info in the error.
+          val missingAuths = checkAuth(txName)
+          if (missingAuths.nonEmpty){
+            logger.error("Cannot assemble tx " + txName + ": Missing authorization from " + missingAuths.map(_.name))
+          }else {
+            logger.error("Cannot assemble tx " + txName + ": Missing datapoints from " + newMissing.map(_.name))
+          }
           return null
         }
       }
@@ -161,7 +167,8 @@ case class Client() extends Actor with LazyLogging{
       for (p <- tMiss) m ! Query(p.endpoint.toString, t)
     }
     if (missing.isEmpty) {
-      // TODO: Mark TInit as public now that we have verified ownership of every public chunk
+      logger.info("Preinit: All public chunks retrieved. Authorizing Tinit...")
+      authorize("Tinit") // TODO: init not hardcoded?
     } else {
       logger.info("Preinit: Missing chunk info from " + missing)
     }
