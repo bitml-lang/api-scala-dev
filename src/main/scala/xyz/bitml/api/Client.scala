@@ -6,6 +6,7 @@ import akka.actor.{Actor, ActorRef, ActorSystem, CoordinatedShutdown, Props}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
+import scodec.bits.ByteVector
 import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
 import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, Authorize, CurrentState, DumpState, Init, Internal, Listen, Node, PreInit, Query, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
@@ -116,9 +117,10 @@ case class Client() extends Actor with LazyLogging{
   def assembleTx(txName : String) : AssembledTx = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
-      // IF we're the only participant, we will need to add the missing non-signature data.
+      // IF we're the only participant, we will need to add the missing non-signature data manually at runtime.
       if (!canComplete.exists(p => p != state.partdb.fetch(identity.publicKey.toString()).get)) {
-        //TODO: Insert element as hex string -> ByteVector
+        fillIn(txName)
+        return null
       }else{ // If other participants' info is missing (either by lack of authorization or no response), query them again.
         logger.error("Cannot assemble tx "+txName+": Missing datapoints from "+canComplete.map(_.name))
         // Automatically start a retrieveSigs on failure.
@@ -194,5 +196,23 @@ case class Client() extends Actor with LazyLogging{
       f.copy(_2 = f._2.copy(chunkData = newChunks))
     }))
     state.metadb.save(toAuth.copy(indexData = authorized))
+  }
+
+  // Interactively insert non-signature data that we own into the transaction.
+  // This is very finicky and should only be used if adding the data into the bitml or into the json state is impossible.
+  def fillIn(txName : String): Unit ={
+    val identityParticipant = state.partdb.fetch(identity.publicKey.toString()).get
+    val baseTx = state.metadb.fetch(txName).get
+    val updatedIndex = baseTx.indexData.map(f => {
+      val newChunks = f._2.chunkData.map(c => {
+        if ((state.partdb.fetch(c.owner.get.toString()).get == identityParticipant) &&
+          (c.data.isEmpty))
+          c.copy(data = ByteVector.fromValidHex(scala.io.StdIn.readLine("Insert hex for value at tx %s index %d chunk %d: " format (txName, f._1, c.chunkIndex))))
+        else c.copy()
+      })
+      f.copy(_2 = f._2.copy(chunkData = newChunks))
+    })
+    val updatedTx = baseTx.copy(indexData = updatedIndex)
+    state.metadb.save(updatedTx)
   }
 }
