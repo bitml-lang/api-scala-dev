@@ -483,10 +483,6 @@ eval Tinit, T1, T2, T3
 
   eval results:
 
-  58
-
-eval Tinit, T1, T2, T3
-
 Tinit
 Transaction{939783b5de6357c52de66658d75b3f939d6e1e4f3aafc357c6f2059e34b8d00f
 weight: 776 wu, 194 bytes
@@ -569,7 +565,50 @@ purpose: UNKNOWN
     txdb.save("T2", t2_raw)
     txdb.save("T3", t3_raw)
 
-    // TODO: create the two different chunk states with the secret hex data.
+    val tinit0_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+    val tinit1_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+    val t1_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+    val t2_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+    val t3_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+
+    val tinit_entry = TxEntry(name = "Tinit", indexData = Map(
+      0 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit0_chunks),
+      1 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit1_chunks)))
+    val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks)))
+    val t2_entry = TxEntry(name = "T2", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t2_chunks)))
+    val t3_entry = TxEntry(name = "T3", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t3_chunks)))
+
+    val metadb = new MetaStorage()
+    metadb.save(tinit_entry)
+    metadb.save(t1_entry)
+    metadb.save(t2_entry)
+    metadb.save(t3_entry)
+
+    val blankState = new Serializer().prettyPrintState(State(partdb, txdb, metadb))
+
+    // Edit chunk with secret information for test convenience. In a real use case this would either be interactive or baked into the state JSON
+
+    val t1_chunks_secret = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.fromValidHex("303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303031")),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+    val t1_entry_secret = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks_secret)))
+    metadb.save(t1_entry_secret)
+
+    val state_alice_view = new Serializer().prettyPrintState(State(partdb, txdb, metadb))
+
+
+
+
 
 
 
