@@ -9,7 +9,7 @@ import xyz.bitml.api.ChunkType.ChunkType
 import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType}
 
 
-class ChunkEntrySerializer extends CustomSerializer[ChunkEntry](format =>(
+class ChunkEntrySerializer(secrecy : ChunkPrivacy = ChunkPrivacy.PUBLIC) extends CustomSerializer[ChunkEntry](format =>(
   {
     case JObject(l : List[JField])=>
       implicit val formats: Formats = org.json4s.DefaultFormats + new ByteVectorSerializer
@@ -29,8 +29,11 @@ class ChunkEntrySerializer extends CustomSerializer[ChunkEntry](format =>(
       val serPriv = JField("priv", Extraction.decompose(x.chunkPrivacy))
       val serPos = JField("index", Extraction.decompose(x.chunkIndex))
       val serOwn = JField("owner", Extraction.decompose(x.owner))
-      val serVal = JField("data", if (x.chunkPrivacy != ChunkPrivacy.PUBLIC)
-        Extraction.decompose(ByteVector.empty) else Extraction.decompose(x.data))
+      val serVal = JField("data", if (x.chunkPrivacy > secrecy) {
+        Extraction.decompose(ByteVector.empty)
+      } else {
+        Extraction.decompose(x.data)
+      })
       val obj = List(serType, serPriv, serPos, serOwn, serVal)
       JObject(obj)
     }

@@ -32,7 +32,7 @@ case class Client() extends Actor with LazyLogging{
     case TryAssemble(t) => sender() ! assembleTx(t)
     case AskForSigs(t) => retrieveSigs(t)
     case Authorize(t) => authorize(t)
-    case DumpState() => sender() ! CurrentState(ser.prettyPrintState(state))
+    case DumpState() => sender() ! CurrentState(new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(state))
     case _ => logger.error("Unexpected event type")
   }
 
@@ -43,14 +43,18 @@ case class Client() extends Actor with LazyLogging{
     val tmpState = ser.loadState(jsonState)
     conv.convertTree(tmpState.metadb, tmpState.txdb)
 
-    // Scroll through the meta info and fill in the signatures dependent on our own identity.
-    for (t <- tmpState.metadb.dump()) sig.fillEntry(tmpState.txdb.fetch(t._1).get, t._2, identity)
-
     // Save processed state as this client's new state.
     state = tmpState
 
+    fillSigs()
+
     // Verify whether our identity matches one of the participants
     state.partdb.fetch(identity.publicKey.toString()).getOrElse(logger.error("Identity doesn't match any of the contract participants!"))
+  }
+
+  def fillSigs(): Unit ={
+    // Scroll through the meta info and fill in the signatures dependent on our own identity.
+    for (t <- state.metadb.dump()) sig.fillEntry(state.txdb.fetch(t._1).get, t._2, identity)
   }
 
   // Start an ActorSystem with a predetermined config and the current state objects.
@@ -107,7 +111,7 @@ case class Client() extends Actor with LazyLogging{
   }
 
   // Retrieve a list of participants with missing data at the expected privacy level.
-  def txPendingPriv(txName: String, privacyLevel: ChunkPrivacy) = {
+  def txPendingPriv(txName: String, privacyLevel: ChunkPrivacy): Seq[Participant] = {
     val meta = state.metadb.fetch(txName).get
     val pubs = meta.indexData.flatMap(_._2.chunkData.filter(x => x.data.isEmpty && x.chunkPrivacy == privacyLevel).map(_.owner.get))
     pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
@@ -148,8 +152,9 @@ case class Client() extends Actor with LazyLogging{
       logger.warn("Transaction "+ txName +" changed txid to "+ assembled.txid.toHex +" upon assembly.")
       // Store assembled tx
       state.txdb.save(txName, assembled)
-      // Validate every signature that may have been broken by this hash change.
+      // Validate every signature that may have been broken by this hash change and repopulate our own.
       state.metadb.validateAll(state.txdb)
+      fillSigs()
     }
 
     AssembledTx(txName, assembled.toString())
