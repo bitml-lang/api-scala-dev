@@ -136,7 +136,7 @@ case class Client() extends Actor with LazyLogging{
           }else {
             logger.error("Cannot assemble tx " + txName + ": Missing datapoints from " + newMissing.map(_.name))
           }
-          return null
+          return AssembledTx(txName, "")
         }
       }
     }
@@ -175,6 +175,7 @@ case class Client() extends Actor with LazyLogging{
       logger.info("Preinit: Missing chunk info from " + missing)
     }
   }
+
 
   // Verify if we need one or more participants' authorization data to complete a transaction and return their set.
   def checkAuth(txName : String): Seq[Participant] ={

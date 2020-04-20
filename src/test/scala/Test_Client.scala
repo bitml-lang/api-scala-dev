@@ -9,7 +9,7 @@ import fr.acinq.bitcoin.{Base58, Btc, OP_0, Satoshi, Script, ScriptElt, Transact
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, StopListening, TryAssemble}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, CurrentState, DumpState, Init, Internal, Listen, Ping, Pong, PreInit, StopListening, TryAssemble}
 import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, Client, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer
@@ -540,6 +540,8 @@ purpose: UNKNOWN
 
 
      */
+    implicit val timeout : Timeout = 1 second
+
 
     val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
@@ -583,9 +585,9 @@ purpose: UNKNOWN
     val tinit_entry = TxEntry(name = "Tinit", indexData = Map(
       0 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit0_chunks),
       1 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit1_chunks)))
-    val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks)))
+    val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t1_chunks)))
     val t2_entry = TxEntry(name = "T2", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t2_chunks)))
-    val t3_entry = TxEntry(name = "T3", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t3_chunks)))
+    val t3_entry = TxEntry(name = "T3", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t3_chunks)))
 
     val metadb = new MetaStorage()
     metadb.save(tinit_entry)
@@ -606,11 +608,60 @@ purpose: UNKNOWN
 
     val state_alice_view = new Serializer().prettyPrintState(State(partdb, txdb, metadb))
 
+    val alice = testSystem.actorOf(Props(classOf[Client]))
+    val bob = testSystem.actorOf(Props(classOf[Client]))
+
+    // Initialize and convert actor state
+    alice ! Init(jsonState = state_alice_view, identity = a_priv)
+    bob ! Init(jsonState = blankState, identity = b_priv)
+
+    // Start network node.
+    alice ! Listen("test_application.conf", alice_p.endpoint.system)
+    bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
+
+    // If Bob tries to assemble Tinit now, he'll be missing the authorization from Alice. This will be reflected in the logging.
+    bob ! TryAssemble("Tinit")
+
+    // Ensure we have all public chunks before we authorize Tinit.
+    // The first time this is called, it will fail and then try fetching every missing chunk.
+    alice ! PreInit()
+    // If he wants, Bob can also use this to receive all public chunks, even if he doesn't have to authorize any chunk.
+    // However, until Alice authorizes Tinit, he won't receive the signatures to sigA0 and sigAFee and can't publish Tinit on his own.
+    bob ! PreInit()
+
+    Thread.sleep(2000)
+    // If alice doesn't have any empty public chunks anymore, it should be safe to share the signatures sigA0 and sigAFee.
+    alice ! PreInit()
+
+    // Now Alice should be able to assemble Tinit, T1 and T2.
+    alice ! TryAssemble("Tinit")
+    /*
+    // TODO: Fix several errors in the logic itself.
+    // After inserting the signatures, the Tinit hash changes.
+    // With that the outpoints of T1 and t3, and their hashes, also change. and because of T1, then T2 also changes.
+    // Aren't all signatures shared before publishing Tinit pointless?
+    alice ! TryAssemble("T1")
+    alice ! TryAssemble("T2")
+
+
+    // In the same way, Bob will now be able to fetch Alice's signatures for Tinit and assemble it.
+    // He will not be able to assemble T1, since that chunk is marked as PRIVATE and can't be shared at all.
+    // He should be able to assemble T3.
+    bob ! TryAssemble("Tinit") // Still missing the signatures at the time this is called, but it will make the query inside.
+    bob ! TryAssemble("T3") // Can be assembled with just the public chunks, but is still subject to the timelock for publication.
 
 
 
 
+    alice ! StopListening()
+    bob ! StopListening()
 
+    for (participant <- Seq(alice, bob)) {
+      println(participant.path)
+      val futState = participant ? DumpState()
+      println(Await.result(futState, timeout.duration).asInstanceOf[CurrentState].state)
+    }
+    */
 
   }
 
