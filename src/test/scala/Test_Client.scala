@@ -635,11 +635,15 @@ purpose: UNKNOWN
 
     // Now Alice should be able to assemble Tinit, T1 and T2.
     alice ! TryAssemble("Tinit")
+
+
     /*
     // TODO: Fix several errors in the logic itself.
     // After inserting the signatures, the Tinit hash changes.
-    // With that the outpoints of T1 and t3, and their hashes, also change. and because of T1, then T2 also changes.
-    // Aren't all signatures shared before publishing Tinit pointless?
+    // Therefore Bob is unable to compute signatures for T1, T2 and T3 before receiving the Tinit signatures from A.
+    // However, once Alice has shared her Tinit signatures, Bob can simply refuse to share his signatures
+    // and effectively ensures that the only way for the contract to progress is for him to cash out after the timelock.
+    // We do not have control over the txFee or the tx0, so we can't convert the Tinit input into witness transactions.
     alice ! TryAssemble("T1")
     alice ! TryAssemble("T2")
 

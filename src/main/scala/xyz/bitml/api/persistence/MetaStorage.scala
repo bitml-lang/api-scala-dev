@@ -2,6 +2,7 @@ package xyz.bitml.api.persistence
 
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Transaction
+import scodec.bits.ByteVector
 import xyz.bitml.api.{Signer, TxEntry}
 
 import scala.collection.immutable.HashMap
@@ -34,8 +35,8 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
       for (i <- localIndex.chunkData.indices) {
         val localChunk = localIndex.chunkData(i)
         val remoteChunk = remoteIndex.chunkData(i)
-        // If the chunk holds new info and properly validates, then we can add its data to ours.
-        if (localChunk.data.isEmpty && remoteChunk.data.nonEmpty && signer.validateSig(matchingTx, k, localIndex.amt, localChunk, remoteChunk.data) ) {
+        // If the chunk holds new info and properly validates (if it is a signature), then we can add its data to ours.
+        if (localChunk.data.isEmpty && remoteChunk.data.nonEmpty && (!localChunk.isSig() || signer.validateSig(matchingTx, k, localIndex.amt, localChunk, remoteChunk.data) )) {
           localChunk.data = remoteChunk.data
           logger.info("Added signature from " + localChunk.owner.get + " to tx " + name)
         }else{
@@ -44,6 +45,22 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
       }
     }
     // No need to propagate the changes as localCopy is the actual record.
+  }
+
+  // Empty any local chunks that do not validate against
+  def validateAll(txdb : TxStorage): Unit = {
+    val signer = new Signer()
+    for (txe <- inMemoryDb.values){
+      val matchingTx = txdb.fetch(txe.name).get
+      for (ie <- txe.indexData){
+        for (chk <- ie._2.chunkData){
+          if (chk.isSig() && chk.data.nonEmpty && !signer.validateSig(matchingTx, ie._1, ie._2.amt, chk, chk.data)){
+            logger.info("Emptying incorrect signature in tx "+ txe.name)
+            chk.data = ByteVector.empty
+          }
+        }
+      }
+    }
   }
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[MetaStorage]

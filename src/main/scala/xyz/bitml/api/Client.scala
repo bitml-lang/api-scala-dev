@@ -148,6 +148,8 @@ case class Client() extends Actor with LazyLogging{
       logger.warn("Transaction "+ txName +" changed txid to "+ assembled.txid.toHex +" upon assembly.")
       // Store assembled tx
       state.txdb.save(txName, assembled)
+      // Validate every signature that may have been broken by this hash change.
+      state.metadb.validateAll(state.txdb)
     }
 
     AssembledTx(txName, assembled.toString())
