@@ -676,8 +676,9 @@ purpose: UNKNOWN
   test("Timed committment correction 1: WPKH Tinit inputs") {
     // The test is almost identical to the original timed commitment, but tries to solve the signature exchange sequence issue by:
     // - Converting the Tinit chunks into WPKH
-    // - Changing the raw transaction sigScript to match that.
+    // - Changed the raw transaction sigScript to match that and fixed every other reference to them. (pretty much the point)
     // Obviously we can't actually redeem txA and txFee with a witness script, but we never verified that as part of the test.
+
 
     implicit val timeout : Timeout = 1 second
 
@@ -695,16 +696,35 @@ purpose: UNKNOWN
     partdb.save(alice_p)
     partdb.save(bob_p)
 
+    val tinit_raw = Transaction.read("02000000023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88700000000")
+    // Precalculated new input scripts, but we still have to edit the inputs of t1, t2 and t3
     val tinit_wit = Transaction.read("020000000001023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000000ffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000000ffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88702002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab02002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab00000000")
     val t1_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e00000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68ffffffff014aeb0c000000000017a9142e38f05e636989a28f71fe9be443f82e9ce3453e8700000000")
     val t2_raw = Transaction.read("0200000001d0621d198f21c889f732d71173c730da32cbc50698cc9cb68525bb27831adc43000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352aeffffffff011a760c00000000001976a914448f9bd84d520fb00adb83f26d8a78ddc5403c8988ac00000000")
     val t3_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e1013000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68feffffff014aeb0c00000000001976a914ba91ed34ad92a7c2aa2d764c73cd0f31a18df68088acb0a61700")
 
+    // Propagate txid changes manually.
+    val t1_wit = t1_raw.copy(txIn = t1_raw.txIn.map(
+      x => x.copy(outPoint = x.outPoint.hash match {
+        case tinit_raw.hash => x.outPoint.copy(hash = tinit_wit.hash)
+        case _ => x.outPoint
+      })))
+    val t3_wit = t3_raw.copy(txIn = t3_raw.txIn.map(
+      x => x.copy(outPoint = x.outPoint.hash match {
+        case tinit_raw.hash => x.outPoint.copy(hash = tinit_wit.hash)
+        case _ => x.outPoint
+      })))
+    val t2_wit = t2_raw.copy(txIn = t2_raw.txIn.map(
+      x => x.copy(outPoint = x.outPoint.hash match {
+        case t1_raw.hash => x.outPoint.copy(hash = t1_wit.hash)
+        case _ => x.outPoint
+      })))
+
     val txdb = new TxStorage()
     txdb.save("Tinit", tinit_wit)
-    txdb.save("T1", t1_raw)
-    txdb.save("T2", t2_raw)
-    txdb.save("T3", t3_raw)
+    txdb.save("T1", t1_wit)
+    txdb.save("T2", t2_wit)
+    txdb.save("T3", t3_wit)
 
     val tinit0w_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2WPKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
@@ -747,6 +767,7 @@ purpose: UNKNOWN
 
     // If we don't specify the higher visibility access, the secret is stripped anyway.
     val state_alice_view = new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(State(partdb, txdb, metadb))
+    println(state_alice_view)
 
     val alice = testSystem.actorOf(Props(classOf[Client]))
     val bob = testSystem.actorOf(Props(classOf[Client]))
@@ -755,28 +776,18 @@ purpose: UNKNOWN
     alice ! Init(jsonState = state_alice_view, identity = a_priv)
     bob ! Init(jsonState = blankState, identity = b_priv)
 
+    Thread.sleep(5000)
+
     // Start network node.
     alice ! Listen("test_application.conf", alice_p.endpoint.system)
     bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
 
-    // If Bob tries to assemble Tinit now, he'll be missing the authorization from Alice. This will be reflected in the logging.
-    bob ! TryAssemble("Tinit")
-
-    // Ensure we have all public chunks before we authorize Tinit.
-    // The first time this is called, it will fail and then try fetching every missing chunk.
-    alice ! PreInit()
-    // If he wants, Bob can also use this to receive all public chunks, even if he doesn't have to authorize any chunk.
-    // However, until Alice authorizes Tinit, he won't receive the signatures to sigA0 and sigAFee and can't publish Tinit on his own.
-    bob ! PreInit()
 
     Thread.sleep(2000)
-    // If alice doesn't have any empty public chunks anymore, it should be safe to share the signatures sigA0 and sigAFee.
-    alice ! PreInit()
 
-    // Now Alice should be able to assemble Tinit, T1 and T2.
-    alice ! TryAssemble("Tinit")
+    alice ! TryAssemble("T1")
 
-
+    Thread.sleep(2000)
 
 
     alice ! StopListening()

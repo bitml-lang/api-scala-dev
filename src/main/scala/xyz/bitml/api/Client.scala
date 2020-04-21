@@ -57,6 +57,7 @@ case class Client() extends Actor with LazyLogging{
   def fillSigs(): Unit ={
     // Scroll through the meta info and fill in the signatures dependent on our own identity.
     for (t <- state.metadb.dump()) sig.fillEntry(state.txdb.fetch(t._1).get, t._2, identity)
+    state.metadb.validateAll(state.txdb)
   }
 
   // Start an ActorSystem with a predetermined config and the current state objects.
@@ -181,7 +182,7 @@ case class Client() extends Actor with LazyLogging{
       logger.info("Preinit: All public chunks retrieved. Authorizing Tinit...")
       authorize("Tinit") // TODO: init not hardcoded?
     } else {
-      logger.info("Preinit: Missing chunk info from " + missing)
+      logger.info("Preinit: Missing chunk info from " + missing.map(_.name))
     }
   }
 

@@ -40,7 +40,10 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
           localChunk.data = remoteChunk.data
           logger.info("Added signature from " + localChunk.owner.get + " to tx " + name)
         }else{
-          logger.warn("Rejected signature for tx " + name + " cause: " + (if (localChunk.data.nonEmpty || remoteChunk.data.isEmpty) "already full" else "Validation error"))
+          if (localChunk.data.nonEmpty || remoteChunk.data.isEmpty)
+            logger.warn("Rejected chunk for tx %s@%d[%d] cause: FULL" format (name, k, localChunk.chunkIndex))
+          else
+            logger.warn("Rejected chunk for tx %s@%d[%d] cause: Validation error" format (name, k, localChunk.chunkIndex))
         }
       }
     }
