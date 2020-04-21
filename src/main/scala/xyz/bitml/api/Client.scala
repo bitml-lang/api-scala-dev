@@ -49,7 +49,9 @@ case class Client() extends Actor with LazyLogging{
     fillSigs()
 
     // Verify whether our identity matches one of the participants
-    state.partdb.fetch(identity.publicKey.toString()).getOrElse(logger.error("Identity doesn't match any of the contract participants!"))
+    state.partdb.fetch(identity.publicKey.toString()).getOrElse(
+      logger.error("Identity %s doesn't match any of the contract participants!" format (identity.publicKey))
+    )
   }
 
   def fillSigs(): Unit ={

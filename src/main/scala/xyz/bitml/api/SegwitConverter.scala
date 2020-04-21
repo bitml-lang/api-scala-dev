@@ -62,8 +62,8 @@ class SegwitConverter extends LazyLogging{
       pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
     }
     else {
-      val pk = Script.publicKey(Script.parse(ss))
-      pubKeyScript = Script.write(Script.pay2wpkh(PublicKey(pk)))
+      val pk = PublicKey(wit.stack.last)
+      pubKeyScript = Script.write(Script.pay2wpkh(pk))
     }
 
     (resTx, pubKeyScript)

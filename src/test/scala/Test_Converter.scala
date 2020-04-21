@@ -165,4 +165,13 @@ class Test_Converter extends AnyFunSuite {
     assert(txdb.fetch("t1").get.txIn(0).outPoint.hash == txdb.fetch("t").get.txid.reverse && txdb.fetch("t1").get.txIn(0).outPoint.hash != oldid)
 
   }
+
+  test("Convert txin.") {
+    val conv = new SegwitConverter()
+
+    val tinit_raw = Transaction.read("02000000023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88700000000")
+
+    val tx_part1 = conv.switchInput(tinit_raw, 0, isP2SH = false)._1
+    println(conv.switchInput(tx_part1, 1, isP2SH = false)._1)
+  }
 }

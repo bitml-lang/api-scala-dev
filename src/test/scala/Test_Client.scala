@@ -126,11 +126,12 @@ T1:[0:[0:(P2PKH from B, P2PKH from A)]]
 
     val initialState = State(partdb, txdb, metadb)
     val stateJson = new Serializer().prettyPrintState(initialState)
-    println(stateJson)
+    //println(stateJson)
 
     // The compiler example doesn't actually follow the normal contract flow, but just produces the first Tinit from A's private key.
 
     val a_priv = PrivateKey.fromBase58("cUnBMKCcvtpuVcfWajJBEF9uQaeNJmcRM6Vasw1vj3ZkiaoAGEuH", Base58.Prefix.SecretKeyTestnet)._1
+    assert(a_priv.publicKey == a_pub)
 
     // Start an actor
     val alice = testSystem.actorOf(Props[Client])
@@ -658,10 +659,6 @@ purpose: UNKNOWN
 
 
 
-    alice ! StopListening()
-    bob ! StopListening()
-
-
     // Print the current state for every participant. AUTH and PRIVATE chunks won't be reflected here.
     for (participant <- Seq(alice, bob)) {
       println(participant.path)
@@ -671,6 +668,119 @@ purpose: UNKNOWN
 
      */
 
+
+    alice ! StopListening()
+    bob ! StopListening()
+  }
+
+  test("Timed committment correction 1: WPKH Tinit inputs") {
+    // The test is almost identical to the original timed commitment, but tries to solve the signature exchange sequence issue by:
+    // - Converting the Tinit chunks into WPKH
+    // - Changing the raw transaction sigScript to match that.
+    // Obviously we can't actually redeem txA and txFee with a witness script, but we never verified that as part of the test.
+
+    implicit val timeout : Timeout = 1 second
+
+
+    val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
+    val a_pub = a_priv.publicKey
+    println(a_pub)
+    val alice_p = Participant("Alice", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
+    val b_priv = PrivateKey.fromBase58("cQmSz3Tj3usor9byskhpCTfrmCM5cLetLU9Xw6y2csYhxSbKDzUn", Base58.Prefix.SecretKeyTestnet)._1
+    val b_pub = b_priv.publicKey
+    println(b_pub)
+    val bob_p = Participant("Bob", List(b_pub), Address("akka", "test", "127.0.0.1", 25001))
+
+    val partdb = new ParticipantStorage()
+    partdb.save(alice_p)
+    partdb.save(bob_p)
+
+    val tinit_wit = Transaction.read("020000000001023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000000ffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000000ffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88702002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab02002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab00000000")
+    val t1_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e00000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68ffffffff014aeb0c000000000017a9142e38f05e636989a28f71fe9be443f82e9ce3453e8700000000")
+    val t2_raw = Transaction.read("0200000001d0621d198f21c889f732d71173c730da32cbc50698cc9cb68525bb27831adc43000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352aeffffffff011a760c00000000001976a914448f9bd84d520fb00adb83f26d8a78ddc5403c8988ac00000000")
+    val t3_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e1013000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68feffffff014aeb0c00000000001976a914ba91ed34ad92a7c2aa2d764c73cd0f31a18df68088acb0a61700")
+
+    val txdb = new TxStorage()
+    txdb.save("Tinit", tinit_wit)
+    txdb.save("T1", t1_raw)
+    txdb.save("T2", t2_raw)
+    txdb.save("T3", t3_raw)
+
+    val tinit0w_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2WPKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+    val tinit1w_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2WPKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+    val t1_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty))
+    val t2_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+    val t3_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty))
+
+    val tinit_entry = TxEntry(name = "Tinit", indexData = Map(
+      0 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit0w_chunks),
+      1 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit1w_chunks)))
+    val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t1_chunks)))
+    val t2_entry = TxEntry(name = "T2", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t2_chunks)))
+    val t3_entry = TxEntry(name = "T3", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t3_chunks)))
+
+    val metadb = new MetaStorage()
+    metadb.save(tinit_entry)
+    metadb.save(t1_entry)
+    metadb.save(t2_entry)
+    metadb.save(t3_entry)
+
+    val blankState = new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(State(partdb, txdb, metadb))
+
+    // Edit chunk with secret information for test convenience. In a real use case this would either be interactive or baked into the state JSON
+
+    val t1_chunks_secret = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.fromValidHex("303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303031")),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty))
+    val t1_entry_secret = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks_secret)))
+    metadb.save(t1_entry_secret)
+
+    // If we don't specify the higher visibility access, the secret is stripped anyway.
+    val state_alice_view = new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(State(partdb, txdb, metadb))
+
+    val alice = testSystem.actorOf(Props(classOf[Client]))
+    val bob = testSystem.actorOf(Props(classOf[Client]))
+
+    // Initialize and convert actor state
+    alice ! Init(jsonState = state_alice_view, identity = a_priv)
+    bob ! Init(jsonState = blankState, identity = b_priv)
+
+    // Start network node.
+    alice ! Listen("test_application.conf", alice_p.endpoint.system)
+    bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
+
+    // If Bob tries to assemble Tinit now, he'll be missing the authorization from Alice. This will be reflected in the logging.
+    bob ! TryAssemble("Tinit")
+
+    // Ensure we have all public chunks before we authorize Tinit.
+    // The first time this is called, it will fail and then try fetching every missing chunk.
+    alice ! PreInit()
+    // If he wants, Bob can also use this to receive all public chunks, even if he doesn't have to authorize any chunk.
+    // However, until Alice authorizes Tinit, he won't receive the signatures to sigA0 and sigAFee and can't publish Tinit on his own.
+    bob ! PreInit()
+
+    Thread.sleep(2000)
+    // If alice doesn't have any empty public chunks anymore, it should be safe to share the signatures sigA0 and sigAFee.
+    alice ! PreInit()
+
+    // Now Alice should be able to assemble Tinit, T1 and T2.
+    alice ! TryAssemble("Tinit")
+
+
+
+
+    alice ! StopListening()
+    bob ! StopListening()
 
   }
 
