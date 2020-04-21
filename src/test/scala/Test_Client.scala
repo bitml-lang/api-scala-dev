@@ -130,7 +130,7 @@ T1:[0:[0:(P2PKH from B, P2PKH from A)]]
 
     // The compiler example doesn't actually follow the normal contract flow, but just produces the first Tinit from A's private key.
 
-    val a_priv = PrivateKey.fromBase58("cUnBMKCcvtpuVcfWajJBEF9uQaeNJmcRM6Vasw1vj3ZkiaoAGEuH", Base58.Prefix.SecretKeyTestnet)._1
+    val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     assert(a_priv.publicKey == a_pub)
 
     // Start an actor
