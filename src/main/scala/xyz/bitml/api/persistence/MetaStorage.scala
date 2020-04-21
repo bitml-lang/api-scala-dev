@@ -24,7 +24,7 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
   def update(data : TxEntry, matchingTx : Transaction): Unit  = {
     val name = data.name
     val localCopy = fetch(name).getOrElse({
-      logger.error("Error validating data: No meta available for "+name)
+      logger.error("Error validating data: No meta available for %" format (name))
       return
     })
     val signer = new Signer()
@@ -38,7 +38,7 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
         // If the chunk holds new info and properly validates (if it is a signature), then we can add its data to ours.
         if (localChunk.data.isEmpty && remoteChunk.data.nonEmpty && (!localChunk.isSig() || signer.validateSig(matchingTx, k, localIndex.amt, localChunk, remoteChunk.data) )) {
           localChunk.data = remoteChunk.data
-          logger.info("Added signature from " + localChunk.owner.get + " to tx " + name)
+          logger.info("Added signature from %s to %s@%d[%d]" format (localChunk.owner.get, name, k, localChunk.chunkIndex))
         }else{
           if (localChunk.data.nonEmpty || remoteChunk.data.isEmpty)
             logger.warn("Rejected chunk for tx %s@%d[%d] cause: FULL" format (name, k, localChunk.chunkIndex))
@@ -58,7 +58,7 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
       for (ie <- txe.indexData){
         for (chk <- ie._2.chunkData){
           if (chk.isSig() && chk.data.nonEmpty && !signer.validateSig(matchingTx, ie._1, ie._2.amt, chk, chk.data)){
-            logger.info("Emptying incorrect signature in tx "+ txe.name)
+            logger.info("Emptying incorrect signature in tx %s" format (txe.name))
             chk.data = ByteVector.empty
           }
         }

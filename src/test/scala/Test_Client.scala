@@ -763,11 +763,9 @@ purpose: UNKNOWN
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty))
     val t1_entry_secret = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks_secret)))
-    metadb.save(t1_entry_secret)
 
     // If we don't specify the higher visibility access, the secret is stripped anyway.
     val state_alice_view = new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(State(partdb, txdb, metadb))
-    println(state_alice_view)
 
     val alice = testSystem.actorOf(Props(classOf[Client]))
     val bob = testSystem.actorOf(Props(classOf[Client]))
@@ -776,7 +774,7 @@ purpose: UNKNOWN
     alice ! Init(jsonState = state_alice_view, identity = a_priv)
     bob ! Init(jsonState = blankState, identity = b_priv)
 
-    Thread.sleep(5000)
+    Thread.sleep(3000)
 
     // Start network node.
     alice ! Listen("test_application.conf", alice_p.endpoint.system)
@@ -788,6 +786,13 @@ purpose: UNKNOWN
     alice ! TryAssemble("T1")
 
     Thread.sleep(2000)
+
+    // Dump and analyze participant state
+    for (participant <- Seq(alice, bob)) {
+      println(participant.path)
+      val futState = participant ? DumpState()
+      println(Await.result(futState, timeout.duration).asInstanceOf[CurrentState].state)
+    }
 
 
     alice ! StopListening()

@@ -13,7 +13,7 @@ class Signer extends LazyLogging{
     if (chunkEntry.owner.isEmpty || (chunkEntry.owner.get != identity.publicKey)){
       false
     } else {
-      logger.info("Signature "+chunkEntry.chunkIndex+" can be filled by "+identity.publicKey)
+      logger.info("Filling [%d] with signature from  %s" format (chunkEntry.chunkIndex, identity.publicKey))
       val produced = chunkEntry.chunkType match {
         case ChunkType.SIG_P2PKH => signP2PKH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
         case ChunkType.SIG_P2SH => signP2SH(identity, txData, inputIndex, amt.getOrElse(Satoshi(0)))
@@ -28,7 +28,7 @@ class Signer extends LazyLogging{
   }
   // Run through TxEntry, looking for chunks that can be signed with the provided private key
   def fillEntry(txData: Transaction, txEntry: TxEntry, identity: PrivateKey): Unit = {
-    logger.debug("Browsing through chunks in transaction "+ txEntry.name)
+    logger.debug("Filling transaction %s" format (txEntry.name))
     val signer = new Signer()
 
     for (indexChunks <- txEntry.indexData) {
@@ -87,7 +87,7 @@ class Signer extends LazyLogging{
     if (localEntry.owner.isEmpty ){
       logger.warn("No owner!"); false
     } else {
-      logger.debug("Verifying signature "+localEntry.chunkIndex)
+      logger.debug("Verifying signature [%d]" format (localEntry.chunkIndex))
       val redeemScript = localEntry.chunkType match {
         case ChunkType.SIG_P2PKH | ChunkType.SIG_P2WPKH => genP2PKHDummy(localEntry.owner.get)
         case ChunkType.SIG_P2SH => Script.write(Seq(Script.parse(toSign.txIn(inputIndex).signatureScript).last)).drop(1)
@@ -115,19 +115,19 @@ class Signer extends LazyLogging{
     for (id <- data.indexData) {
       for (chunk <- id._2.chunkData) {
         if (chunk.data.isEmpty) {
-          logger.warn("Warning: One of the expected chunks appears to be empty!")
+          logger.warn("Warning: chunk [%d] appears to be empty!" format (chunk.chunkIndex))
         } else {
           chunk.chunkType match {
             case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => {
               cp = cp.updateSigScript(id._1, injectPushdataIn(Script.parse(cp.txIn(id._1).signatureScript), chunk.data, chunk.chunkIndex))
-              logger.debug("Added chunk to sigScript")
-              logger.warn("TXID CHANGE: " + tx.txid + " -> " + cp.txid)
+              logger.debug("Added chunk to  %s@%d[%d] sigScript" format (data.name, id._1, chunk.chunkIndex))
+              logger.warn("TXID CHANGE: %s -> %s"  format ( tx.txid, cp.txid))
               // TODO: propagate in transactions referencing the original txid as outpoint.
             }
             case ChunkType.SIG_P2WPKH | ChunkType.SIG_P2WSH | ChunkType.SECRET_WIT => {
               val witstack = cp.txIn(id._1).witness.stack
               cp = cp.updateWitness(id._1, ScriptWitness(injectAt(chunk.data, chunk.chunkIndex, witstack)))
-              logger.debug("added chunk to witness stack")
+              logger.debug("added chunk to %s@%d[%d] witness stack" format (data.name, id._1, chunk.chunkIndex))
             }
             case _ => logger.warn("Warning: chunk type is unknown/incompatible with auto-insertion")
           }
