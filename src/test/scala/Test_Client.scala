@@ -604,7 +604,7 @@ purpose: UNKNOWN
       ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.fromValidHex("303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303031")),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty))
-    val t1_entry_secret = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t1_chunks_secret)))
+    val t1_entry_secret = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t1_chunks_secret)))
     metadb.save(t1_entry_secret)
 
     // If we don't specify the higher visibility access, the secret is stripped anyway.
@@ -776,7 +776,7 @@ purpose: UNKNOWN
     alice ! Init(jsonState = state_alice_view, identity = a_priv)
     bob ! Init(jsonState = blankState, identity = b_priv)
 
-    Thread.sleep(3000)
+    Thread.sleep(500)
 
     // Start network node.
     alice ! Listen("test_application.conf", alice_p.endpoint.system)
@@ -784,10 +784,41 @@ purpose: UNKNOWN
 
 
     Thread.sleep(2000)
-
-    alice ! TryAssemble("T1")
+    // Let Alice and Bob exchange public signatures.
+    alice ! PreInit()
+    bob ! PreInit()
 
     Thread.sleep(2000)
+    // If Alice has received every necessary public chunk, she can now also disclose her signatures for the Tinit inputs.
+    alice ! PreInit()
+
+    // Alice should be able to assemble Tinit, T1, T2 (and T3) todo: publishing module
+    for (txName <- Seq("Tinit", "T1", "T2", "T3")) {
+      val future3 = alice ? TryAssemble(txName)
+      val res3 = Await.result(future3, timeout.duration).asInstanceOf[AssembledTx].serializedTx
+      // The node has produced a transaction.
+      assert(res3.length != 0)
+      println(Transaction.read(res3).txIn)
+    }
+
+    // Bob should need to retrieve the Tinit chunks that were just authorized to complete Tinit
+    bob ! TryAssemble("Tinit")
+    Thread.sleep(2000)
+    // Bob will not be able to complete T1, no matter what. But he can assemble Tinit and T3 (and T2).
+    for (txName <- Seq("Tinit", "T1", "T2", "T3")) {
+      val future3 = bob ? TryAssemble(txName)
+      // We need a higher timeout here because B will wait 1000ms inside T1 for an answer from A
+      val res3 = Await.result(future3, 2000 millis).asInstanceOf[AssembledTx].serializedTx
+      // The node has produced a transaction.
+      if (txName != "T1") {
+        assert(res3.length != 0)
+        println(Transaction.read(res3).txIn)
+      }else{
+        assert(res3.length == 0)
+      }
+    }
+
+
 
     // Dump and analyze participant state
     for (participant <- Seq(alice, bob)) {
@@ -795,6 +826,7 @@ purpose: UNKNOWN
       val futState = participant ? DumpState()
       println(Await.result(futState, timeout.duration).asInstanceOf[CurrentState].state)
     }
+    // If the authorization was successful, besides the logging message, A's Tinit chunks should have become "priv":0 instead of 1.
 
 
     alice ! StopListening()
