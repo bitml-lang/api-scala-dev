@@ -42,8 +42,10 @@ class MetaStorage (private var inMemoryDb : Map[String, TxEntry] = new HashMap[S
         }else{
           if (localChunk.data.nonEmpty || remoteChunk.data.isEmpty)
             logger.warn("Rejected chunk for tx %s@%d[%d] cause: FULL" format (name, k, localChunk.chunkIndex))
-          else
-            logger.warn("Rejected chunk for tx %s@%d[%d] cause: Validation error" format (name, k, localChunk.chunkIndex))
+          else {
+            logger.warn("Rejected chunk for tx %s@%d[%d] cause: Validation error" format(name, k, localChunk.chunkIndex))
+            logger.debug("tx:%s\nsig:%s\npk:%s" format (matchingTx, remoteChunk.data, localChunk.owner.get))
+          }
         }
       }
     }

@@ -23,6 +23,7 @@ class Signer extends LazyLogging{
       }
       // Insert into original object
       chunkEntry.data = produced
+      logger.debug("tx:%s\nsig:%s\npk:%s\n sanity:%s" format (txData, produced, chunkEntry.owner.get, identity.publicKey == chunkEntry.owner.get))
       true
     }
   }
