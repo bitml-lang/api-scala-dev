@@ -328,7 +328,7 @@ Participants:
 A,B
 
 TXs:
-Tinit, T1, T2, ... T14 (all without any baked-in signatures or secrets)
+Tinit, T1, T2, ... T14 (all without any baked-in signatures or secrets) (PS: it may be acceptable to bake in private-level secrets.)
 
 Meta:
 Tinit : P2PKH sigs from A for txA, B for txB and txFee (chunks 0 of indexes 0,1,2)
@@ -417,9 +417,6 @@ transaction T3 {
 eval Tinit, T1, T2, T3
 
     Build state
-    //TODO: switch a,b pubkeys with the ones from known private keys (we need to sign the transactions in the test itself)
-    //TODO: build a common balzac intermediate representation that matches both participants' views.
-    // That would be: sigBT* empty, no secret, etc.
 
     Edited public state
 
@@ -674,10 +671,10 @@ purpose: UNKNOWN
   }
 
   test("Timed committment correction 1: WPKH Tinit inputs") {
-    // The test is almost identical to the original timed commitment, but tries to solve the signature exchange sequence issue by:
-    // - Converting the Tinit chunks into WPKH
-    // - Changed the raw transaction sigScript to match that and fixed every other reference to them. (pretty much the point)
-    // Obviously we can't actually redeem txA and txFee with a witness script, but we never verified that as part of the test.
+    // The test is almost identical to the original timed commitment, but the Client tries to solve the signature exchange sequence issue by:
+    // - Converting the Tinit chunks into WPKH (assumes they were such from the start and were tagged as PKH by balzac)
+    // - Changed the raw transaction sigScript to match that and fixed every other reference to them. (same as the above)
+    // Obviously we can't actually redeem the real txA and txFee with a witness script.
 
 
     implicit val timeout : Timeout = 1 second
@@ -703,6 +700,7 @@ purpose: UNKNOWN
     val t2_raw = Transaction.read("0200000001d0621d198f21c889f732d71173c730da32cbc50698cc9cb68525bb27831adc43000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352aeffffffff011a760c00000000001976a914448f9bd84d520fb00adb83f26d8a78ddc5403c8988ac00000000")
     val t3_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e1013000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68feffffff014aeb0c00000000001976a914ba91ed34ad92a7c2aa2d764c73cd0f31a18df68088acb0a61700")
 
+    /*
     // Propagate txid changes manually.
     val t1_wit = t1_raw.copy(txIn = t1_raw.txIn.map(
       x => x.copy(outPoint = x.outPoint.hash match {
@@ -720,16 +718,30 @@ purpose: UNKNOWN
         case _ => x.outPoint
       })))
 
-    val txdb = new TxStorage()
-    txdb.save("Tinit", tinit_wit)
-    txdb.save("T1", t1_wit)
-    txdb.save("T2", t2_wit)
-    txdb.save("T3", t3_wit)
+     */
 
-    val tinit0w_chunks = Seq(
+
+    val txdb = new TxStorage()
+    // Define it with the original Tinit referenced by T1 and T3
+    txdb.save("Tinit", tinit_raw)
+    txdb.save("T1", t1_raw)
+    txdb.save("T2", t2_raw)
+    txdb.save("T3", t3_raw)
+    // Make use of the current propagation mechanism to change Tinit references automatically
+    // This should be done automatically inside Client.initState() now.
+    // txdb.save("Tinit", tinit_wit)
+
+    // Same for these.
+    /*val tinit0w_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2WPKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
     val tinit1w_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SIG_P2WPKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+      */
+
+    val tinit0_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
+    val tinit1_chunks = Seq(
+      ChunkEntry(chunkType = ChunkType.SIG_P2PKH, chunkPrivacy= ChunkPrivacy.AUTH, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty))
     val t1_chunks = Seq(
       ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
@@ -742,8 +754,8 @@ purpose: UNKNOWN
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty))
 
     val tinit_entry = TxEntry(name = "Tinit", indexData = Map(
-      0 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit0w_chunks),
-      1 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit1w_chunks)))
+      0 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit0_chunks),
+      1 -> IndexEntry(amt = Satoshi(453333) ,chunkData = tinit1_chunks)))
     val t1_entry = TxEntry(name = "T1", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t1_chunks)))
     val t2_entry = TxEntry(name = "T2", indexData = Map(0 -> IndexEntry(amt = Satoshi(846666) ,chunkData = t2_chunks)))
     val t3_entry = TxEntry(name = "T3", indexData = Map(0 -> IndexEntry(amt = Satoshi(876666) ,chunkData = t3_chunks)))
@@ -788,7 +800,7 @@ purpose: UNKNOWN
     alice ! PreInit()
     bob ! PreInit()
 
-    Thread.sleep(2000)
+    Thread.sleep(1000)
     // If Alice has received every necessary public chunk, she can now also disclose her signatures for the Tinit inputs.
     alice ! PreInit()
 
@@ -803,7 +815,7 @@ purpose: UNKNOWN
 
     // Bob should need to retrieve the Tinit chunks that were just authorized to complete Tinit
     bob ! TryAssemble("Tinit")
-    Thread.sleep(2000)
+    Thread.sleep(1500)
     // Bob will not be able to complete T1, no matter what. But he can assemble Tinit and T3 (and T2).
     for (txName <- Seq("Tinit", "T1", "T2", "T3")) {
       val future3 = bob ? TryAssemble(txName)
@@ -817,8 +829,6 @@ purpose: UNKNOWN
         assert(res3.length == 0)
       }
     }
-
-
 
     // Dump and analyze participant state
     for (participant <- Seq(alice, bob)) {

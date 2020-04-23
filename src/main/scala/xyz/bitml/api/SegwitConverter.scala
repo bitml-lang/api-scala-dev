@@ -87,55 +87,61 @@ class SegwitConverter extends LazyLogging{
         case _ => false
       }))
 
+      // Copy current indexData structure
+      var metaCopy = m._2.copy().indexData
+
       for (i <- toConvert) {
         // Create a deep copy that we can overwrite and save.
         var cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)
 
+        // Update the redeemScript and produce the matching PubKeyScript
+        val isP2SH = i._2.chunkData.exists(_.chunkType match {
+          case ChunkType.SIG_P2PKH => false
+          case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
+          case _ => logger.error("Unexpected processing of non-base index type"); true
+        })
+
+        val res = switchInput(cp, i._1, isP2SH)
+        cp = res._1
+        // Save partial conversion so that txdb can apply the txid changes
+        txdb.save(m._1, cp)
+
         // If the sigScript references one of our own transactions,  we can safely change it
-        //  and update the referenced tx with the modified pubKeyScript
-        logger.debug("Searching for tx with hash "+cp.txIn(i._1).outPoint.hash)
+        //  and update the referenced tx with the modified pubKeyScript.
+        logger.debug("Searching for tx with hash %s " format (cp.txIn(i._1).outPoint.hash))
         val searchStr = oldIdMap.get(cp.txIn(i._1).outPoint.hash.reverse)
         if (searchStr.nonEmpty) {
-          val prevStr = searchStr.get
-          logger.debug("Retrieving tx with id "+prevStr)
-          val prevTx = txdb.fetch(prevStr)
-          // Update the redeemScript and produce the matching PubKeyScript
-          val isP2SH = i._2.chunkData.exists(_.chunkType match {
-            case ChunkType.SIG_P2PKH => false
-            case ChunkType.SIG_P2SH | ChunkType.SECRET_IN => true
-            case _ => logger.error("Unexpected processing of non-base index type"); true
-          })
-
-          val res = switchInput(cp, i._1, isP2SH)
-          cp = res._1
-          // Save partial conversion so that txdb can apply the txid changes
-          txdb.save(m._1, cp)
-
           val pks = res._2
-
+          val prevStr = searchStr.get
+          logger.debug("Retrieving tx with id %s " format (prevStr))
+          val prevTx = txdb.fetch(prevStr)
           // Edit and save referenced Transaction with converted pubkeyscript
           val newPrev = switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks)
           txdb.save(prevStr, newPrev)
-
-          // Refresh cp so that we receive the txdb txid updates.
-          cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)
-
-          // Convert our own info and update our IndexData
-          val newChunks =  i._2.chunkData.map(f => f.copy(
-            chunkType = f.chunkType match {
-              case ChunkType.SECRET_IN => ChunkType.SECRET_WIT
-              case ChunkType.SIG_P2SH => ChunkType.SIG_P2WSH
-              case ChunkType.SIG_P2PKH => ChunkType.SIG_P2WPKH
-              case _ => logger.error("Unexpected processing of non-base index type"); f.chunkType
-            },
-            data = f.chunkType match {
-              case ChunkType.SECRET_WIT | ChunkType.SECRET_IN => f.data // The script rewrite should preserve the expected value.
-              case _ => ByteVector.empty // Any signature (especially with sighash_all) will have to be remade.
-            }
-          ))
-          metadb.save( m._2.copy(indexData = m._2.indexData +(i._1 ->  i._2.setChunks(newChunks))))
+        } else {
+          // There is only one situation in which we'd like to switch only the input, and that's Tinit inputs.
+          // Anything else is almost certainly an error and should at least be logged.
+          logger.error("Transaction %s modified without control of output" format (m._1))
         }
+        // Refresh cp so that we receive the txdb txid updates.
+        cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)
+
+        // Convert our own info and update our IndexData
+        val newChunks =  i._2.chunkData.map(f => f.copy(
+          chunkType = f.chunkType match {
+            case ChunkType.SECRET_IN => ChunkType.SECRET_WIT
+            case ChunkType.SIG_P2SH => ChunkType.SIG_P2WSH
+            case ChunkType.SIG_P2PKH => ChunkType.SIG_P2WPKH
+            case _ => logger.error("Unexpected processing of non-base index type"); f.chunkType
+          },
+          data = f.chunkType match {
+            case ChunkType.SECRET_WIT | ChunkType.SECRET_IN => f.data // The script rewrite should preserve the expected value.
+            case _ => ByteVector.empty // Any signature (especially with sighash_all) will have to be remade.
+          }
+        ))
+        metaCopy += (i._1 -> i._2.copy(chunkData = newChunks))
       }
+      metadb.save( m._2.copy(indexData = metaCopy))
     }
   }
 }

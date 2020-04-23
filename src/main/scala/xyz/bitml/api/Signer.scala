@@ -120,8 +120,8 @@ class Signer extends LazyLogging{
         } else {
           chunk.chunkType match {
             case ChunkType.SIG_P2PKH | ChunkType.SIG_P2SH | ChunkType.SECRET_IN => {
+              logger.debug("Adding chunk to  %s@%d[%d] sigScript" format (data.name, id._1, chunk.chunkIndex))
               cp = cp.updateSigScript(id._1, injectPushdataIn(Script.parse(cp.txIn(id._1).signatureScript), chunk.data, chunk.chunkIndex))
-              logger.debug("Added chunk to  %s@%d[%d] sigScript" format (data.name, id._1, chunk.chunkIndex))
               logger.warn("TXID CHANGE: %s -> %s"  format ( tx.txid, cp.txid))
               // TODO: propagate in transactions referencing the original txid as outpoint.
             }
