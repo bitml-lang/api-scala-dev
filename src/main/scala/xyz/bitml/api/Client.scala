@@ -31,7 +31,7 @@ case class Client() extends Actor with LazyLogging{
     case Listen(c,s) => listenMsg(c,s)
     case StopListening() => shutdownMsg()
     case PreInit() => preInit()
-    case TryAssemble(t) => sender() ! assembleTx(t)
+    case TryAssemble(t, ap) => sender() ! assembleTx(t, ap)
     case AskForSigs(t) => retrieveSigs(t)
     case Authorize(t) => authorize(t)
     case DumpState() => sender() ! CurrentState(new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(state))
@@ -123,7 +123,7 @@ case class Client() extends Actor with LazyLogging{
   }
 
   // If completable, assemble given tx and return raw serialized form. TODO: proper try/success/failure?
-  def assembleTx(txName : String) : AssembledTx = {
+  def assembleTx(txName : String, autoPublish : Boolean) : AssembledTx = {
     val canComplete = txPendingList(txName)
     if (canComplete.nonEmpty) {
       // IF we're the only participant, we will need to add the missing non-signature data manually at runtime.
@@ -162,6 +162,12 @@ case class Client() extends Actor with LazyLogging{
       fillSigs()
     }
 
+    if (autoPublish){
+      // Send raw tx
+      val addedTx = rpc.sendRawTransaction(assembled.toString())
+      logger.info("Sent raw transaction, txid %s" format (addedTx))
+    }
+    // Return serialized tx
     AssembledTx(txName, assembled.toString())
   }
 

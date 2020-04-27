@@ -20,7 +20,7 @@ case class Listen(config: String, systemName: String) extends Internal
 case class StopListening() extends Internal
 case class DumpState() extends Internal
 
-case class TryAssemble(txName: String) extends Internal
+case class TryAssemble(txName: String, autoPublish : Boolean = false) extends Internal
 case class AskForSigs(txName: String) extends Internal
 
 case class PreInit() extends Internal
