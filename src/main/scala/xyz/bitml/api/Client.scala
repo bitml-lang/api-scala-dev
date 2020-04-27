@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PrivateKey
 import scodec.bits.ByteVector
+import wf.bitcoin.javabitcoindrpcclient.BitcoinJSONRPCClient
 import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
 import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, Authorize, CurrentState, DumpState, Init, Internal, Listen, Node, PreInit, Query, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
@@ -23,6 +24,7 @@ case class Client() extends Actor with LazyLogging{
   val ser = new Serializer()
   val conv = new SegwitConverter()
   val sig = new Signer()
+  val rpc = new BitcoinJSONRPCClient()
 
   override def receive : Receive = {
     case Init(pk, x) => identity = pk; initState(x)
