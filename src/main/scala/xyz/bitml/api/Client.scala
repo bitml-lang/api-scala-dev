@@ -109,17 +109,17 @@ case class Client() extends Actor with LazyLogging{
   }
 
   // Retrieve a list of participants whose data is missing to complete a certain tx.
-  def txPendingList(txName : String) : Seq[Participant] = {
+  def txPendingList(txName : String) : Set[Participant] = {
     val meta = state.metadb.fetch(txName).get
     val pubs = meta.indexData.flatMap(_._2.chunkData.filter(_.data.isEmpty).map(_.owner.get))
-    pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
+    pubs.map(x => state.partdb.fetch(x.toString()).get).toSet
   }
 
   // Retrieve a list of participants with missing data at the expected privacy level.
-  def txPendingPriv(txName: String, privacyLevel: ChunkPrivacy): Seq[Participant] = {
+  def txPendingPriv(txName: String, privacyLevel: ChunkPrivacy): Set[Participant] = {
     val meta = state.metadb.fetch(txName).get
     val pubs = meta.indexData.flatMap(_._2.chunkData.filter(x => x.data.isEmpty && x.chunkPrivacy == privacyLevel).map(_.owner.get))
-    pubs.map(x => state.partdb.fetch(x.toString()).get).toSeq
+    pubs.map(x => state.partdb.fetch(x.toString()).get).toSet
   }
 
   // If completable, assemble given tx and return raw serialized form. TODO: proper try/success/failure?
@@ -135,7 +135,7 @@ case class Client() extends Actor with LazyLogging{
         // Automatically start a retrieveSigs on failure.
         retrieveSigs(txName)
         logger.debug("Waiting for responses...")
-        Thread.sleep(1000) // TODO: class-defined default timeout variable
+        Thread.sleep(500) // TODO: class-defined default timeout variable
         val newMissing = txPendingList(txName)
         if (newMissing.nonEmpty) {
           // If at least some of the missing data is a participant's authorization, reflect more specific info in the error.
@@ -168,6 +168,8 @@ case class Client() extends Actor with LazyLogging{
       logger.info("Sent raw transaction, txid %s" format (addedTx))
     }
     // Return serialized tx
+    logger.debug("Assembled transaction %s into %s" format (txName, assembled.toString()))
+
     AssembledTx(txName, assembled.toString())
   }
 
@@ -196,7 +198,7 @@ case class Client() extends Actor with LazyLogging{
 
 
   // Verify if we need one or more participants' authorization data to complete a transaction and return their set.
-  def checkAuth(txName : String): Seq[Participant] ={
+  def checkAuth(txName : String): Set[Participant] ={
     txPendingPriv(txName, ChunkPrivacy.AUTH).filter(p=> p != state.partdb.fetch(identity.publicKey.toString()).get)
   }
 

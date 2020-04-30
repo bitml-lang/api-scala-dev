@@ -647,9 +647,10 @@ T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
     // Third split: match sec_a sec_b.
     // TODO: Should each participant grab the opposite participant's secret from T2/T5 respectively? (currently unimplemented RPC lookup)
     //  Or can we trust to just ask them? (switch private blocks in t8 and t10 to public)
+    // Temporarily implemented the latter
     val t8_chunks = Seq(
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
     )
@@ -658,8 +659,8 @@ T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty)
     )
     val t10_chunks = Seq(
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
     )
@@ -668,8 +669,8 @@ T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(a_pub), data = ByteVector.empty)
     )
     val t12_chunks = Seq(
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.fromValidHex("00")),
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.fromValidHex("00")),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.fromValidHex("00")),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.fromValidHex("00")),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
     )
@@ -732,14 +733,14 @@ T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
     )
     // T8 and T10 might look different depending on the note above.
     val t8_b = Seq(
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(b_pub), data = b_secret),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = b_secret),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
     )
     val t10_b = Seq(
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
-      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(b_pub), data = b_secret),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = b_secret),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
       ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
     )
@@ -752,6 +753,84 @@ T2: P2SH (T1) sigs from A and B (chunks 0,1 of index 0)
 
     val b_view = stateSerializer.prettyPrintState(State(partdb, txdb, metadb))
 
+    // Build A view
+    val a_secret = ByteVector.fromValidHex("3030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030")
+
+    val t5_a = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PRIVATE, chunkIndex = 0, owner = Option(a_pub), data = a_secret),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
+    )
+    // T8 and T10 might look different depending on the note above.
+    val t8_a = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = a_secret),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
+    )
+    val t10_a = Seq(
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(a_pub), data = a_secret),
+      ChunkEntry(chunkType = ChunkType.SECRET_IN, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 0, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 1, owner = Option(b_pub), data = ByteVector.empty),
+      ChunkEntry(chunkType = ChunkType.SIG_P2SH, chunkPrivacy= ChunkPrivacy.PUBLIC, chunkIndex = 2, owner = Option(a_pub), data = ByteVector.empty)
+    )
+    val t5_entry_a = TxEntry(name = "T5", indexData = Map(0 -> IndexEntry(amt = Satoshi(513333) ,chunkData = t5_a)))
+    val t8_entry_a = TxEntry(name = "T8", indexData = Map(0 -> IndexEntry(amt = Satoshi(513333) ,chunkData = t8_a)))
+    val t10_entry_a = TxEntry(name = "T10", indexData = Map(0 -> IndexEntry(amt = Satoshi(513333) ,chunkData = t10_a)))
+    // Revert content of t2 and save content of new t5-8-10
+    metadb.save(t2_entry)
+    metadb.save(t5_entry_a)
+    metadb.save(t8_entry_a)
+    metadb.save(t10_entry_a)
+
+    val a_view = stateSerializer.prettyPrintState(State(partdb, txdb, metadb))
+
+    val alice = testSystem.actorOf(Props(classOf[Client]))
+    val bob = testSystem.actorOf(Props(classOf[Client]))
+
+    // Initialize and convert actor state
+    alice ! Init(jsonState = a_view, identity = a_priv)
+    bob ! Init(jsonState = b_view, identity = b_priv)
+    Thread.sleep(1000)
+
+    // Start network node.
+    alice ! Listen("test_application.conf", alice_p.endpoint.system)
+    bob ! Listen("test_application_b.conf", bob_p.endpoint.system)
+    Thread.sleep(1000)
+
+    alice ! PreInit()
+    bob ! PreInit()
+
+    Thread.sleep(2000)
+
+    alice ! PreInit()
+    bob ! PreInit()
+
+    Thread.sleep(2000)
+
+    // Replicate the example flow corresponding to the given secrets.
+    for (txName <- Seq("Tinit", "T1", "T5", "T6")) {
+      println("Assembling %s..." format (txName))
+      val future3 = alice ? TryAssemble(txName)
+      val res3 = Await.result(future3, 2000 millis).asInstanceOf[AssembledTx].serializedTx
+      // The node has produced a transaction.
+      assert(res3.length != 0)
+      println(Transaction.read(res3).txIn)
+    }
+
+    for (txName <- Seq("T2", "T3", "T8", "T9")) {
+      val future3 = bob ? TryAssemble(txName)
+      val res3 = Await.result(future3, 2000 millis).asInstanceOf[AssembledTx].serializedTx
+      // The node has produced a transaction.
+      assert(res3.length != 0)
+      println(Transaction.read(res3).txIn)
+    }
+
+    Thread.sleep(1000)
+
+    alice ! StopListening()
+    bob ! StopListening()
+    Thread.sleep(1000)
 
   }
 
@@ -1109,7 +1188,7 @@ purpose: UNKNOWN
     partdb.save(bob_p)
 
     val tinit_raw = Transaction.read("02000000023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000023002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2abffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88700000000")
-    // Precalculated new input scripts, but we still have to edit the inputs of t1, t2 and t3
+    // Now unused since the Client will patch the tinit_raw for us.
     val tinit_wit = Transaction.read("020000000001023dd3091af13f0948d53fb1a4f762c69fdb76b2f190c797dc62ccae23357c09f70000000000ffffffff592e502d6c7cf9efc5b3cf82025307c524dcdb13f0330fcffe418662844cf2080000000000ffffffff017a600d000000000017a914e2fc356d35e4759c282c9c49a39a3e8fd6f756d88702002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab02002102a6d35321c8930c1da17df79edebaf13192ee3e39c9abcea6d8dd9c5f3640e2ab00000000")
     val t1_raw = Transaction.read("02000000010fd0b8349e05f2c657c3af3a4f1e6e9d933f5bd75866e62dc55763deb583979300000000e00000004cdb6b6b766ba9149f3df038eeadc0c240fb7f82e31fdfe46804fc7c87636c766b827c75028000a267006863006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae670068635167006c6c766b7c6c6c766b7c6b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352ae68ffffffff014aeb0c000000000017a9142e38f05e636989a28f71fe9be443f82e9ce3453e8700000000")
     val t2_raw = Transaction.read("0200000001d0621d198f21c889f732d71173c730da32cbc50698cc9cb68525bb27831adc43000000005500004c516b6b006c766c766b7c6b522103859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e2103ff41f23b70b1c83b01914eb223d7a97a6c2b24e9a9ef2762bf25ed1c1b83c9c352aeffffffff011a760c00000000001976a914448f9bd84d520fb00adb83f26d8a78ddc5403c8988ac00000000")
