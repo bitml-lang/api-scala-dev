@@ -1282,7 +1282,7 @@ purpose: UNKNOWN
     alice ! Init(jsonState = state_alice_view, identity = a_priv)
     bob ! Init(jsonState = blankState, identity = b_priv)
 
-    Thread.sleep(500)
+    Thread.sleep(2000)
 
     // Start network node.
     alice ! Listen("test_application.conf", alice_p.endpoint.system)
@@ -1294,9 +1294,11 @@ purpose: UNKNOWN
     alice ! PreInit()
     bob ! PreInit()
 
-    Thread.sleep(1000)
+    Thread.sleep(5000) // The VM needs a REALLY long time to do this calculation.
     // If Alice has received every necessary public chunk, she can now also disclose her signatures for the Tinit inputs.
     alice ! PreInit()
+
+    Thread.sleep(1000)
 
     // Alice should be able to assemble Tinit, T1, T2 (and T3) todo: publishing module
     for (txName <- Seq("Tinit", "T1", "T2", "T3")) {
