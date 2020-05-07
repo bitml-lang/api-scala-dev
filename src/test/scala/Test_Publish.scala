@@ -68,7 +68,7 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     val a_pub = a_priv.publicKey
     println(a_pub)
     val a_p = Participant("A", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
-    println(Base58Check.encode(Base58.Prefix.PubkeyAddressTestnet, a_pub.hash160))
+    println(Base58Check.encode(Base58.Prefix.ScriptAddressTestnet, a_pub.hash160))
     /*
     val b_pub = PublicKey(ByteVector.fromValidHex("03859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e"))
     val b_p = Participant("B", List(b_pub), Address("akka", "test", "127.0.0.1", 25001))
