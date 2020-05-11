@@ -2,7 +2,7 @@ package xyz.bitml.api
 
 import com.typesafe.scalalogging.LazyLogging
 import fr.acinq.bitcoin.Crypto.PublicKey
-import fr.acinq.bitcoin.{ByteVector32, OutPoint, Script, ScriptWitness, Transaction, TxIn, TxOut}
+import fr.acinq.bitcoin.{ByteVector32, Crypto, OP_0, OP_EQUAL, OP_HASH160, OP_PUSHDATA, OutPoint, Script, ScriptWitness, Transaction, TxIn, TxOut}
 import scodec.bits.ByteVector
 import xyz.bitml.api.persistence.{MetaStorage, TxStorage}
 
@@ -54,18 +54,25 @@ class SegwitConverter extends LazyLogging{
   def switchInput(tx: Transaction, index : Int, isP2SH : Boolean) : (Transaction, ByteVector) = {
     val ss = tx.txIn(index).signatureScript
     val wit = convertRedeem(ss)
-    val resTx = tx.updateSigScript(index, ByteVector.empty).updateWitness(index, wit)
 
     // Produce the corresponding pubKeyScript
+    // We are making P2SH/P2WSH and P2SH/P2WPKH now. TODO: TEST TEST TEST
+    var newSig : ByteVector = ByteVector.empty
     var pubKeyScript = ByteVector.empty
     if (isP2SH) {
-      pubKeyScript = Script.write(Script.pay2wsh(wit.stack.last))
+      val actualScript = wit.stack.last
+      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(actualScript)) :: OP_EQUAL :: Nil)
+      val content = Script.write(OP_0 :: OP_PUSHDATA(Crypto.hash256(actualScript)) :: Nil)
+      newSig = Script.write(OP_PUSHDATA(content) :: Nil)
     }
     else {
       val pk = PublicKey(wit.stack.last)
-      pubKeyScript = Script.write(Script.pay2wpkh(pk))
+      val content = Script.write(OP_0 :: OP_PUSHDATA(pk.hash160) :: Nil)
+      newSig = Script.write(OP_PUSHDATA(content) :: Nil)
+      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(newSig)) :: OP_EQUAL :: Nil)
     }
 
+    val resTx = tx.updateSigScript(index, newSig).updateWitness(index, wit)
     (resTx, pubKeyScript)
   }
 
