@@ -3,17 +3,33 @@ Issues:
 Input transaction issues:
 Solved by including in the "spec" the requirement of only having P2WPKH outputs.
 The new problem is Balzac will refuse to touch any raw transaction output that isn't a recognized p2pkh or p2sh.
+This has to be addressed from the compiler side though, aas it is a problem in the initial state generation.
 At the moment the correct txid's are patched manually into the Tinit raw tx.
+IMPORTANT UPDATE: Due to compatibility issues, the transaction inputs are not native P2WPKH anymore, but P2SH/P2WPKH.
 
 RPC/bitcoind Module testing
-bitcoin-core doesn't have a good way to make native P2WPKH, only P2SH/P2WPKH.
-This means that it's quite difficult to actually produce the right input tx's even on regtest.
-But ACINQ's bitcoin-lib doesn't have a method to produce sigScripts for these hybrid transactions.
-TODO: evaluate if we should just write our own scripts following BIP 141 spec.
+After tinkering a little with the current bitcoin-core release (very poorly documented changes from the official docs!),
+the Java RPC library, and our transaction conversion code, our code produces correct P2SH/P2WPKH and P2SH/P2WSH scripts.
+The test transaction is not malformed anymore but still fails to publish due to an Absurdly-high-fee error.
+The math seemed correct though (or at least untouched from the original example). TODO: review the original testnet satoshi inputs.
+Overall, the RPC module IS operational and I can confirm it successfully connects and interacts with the RPC server
+with the correct parameters.
+IMPORTANT NOTE ABOUT BITCOIN-CORE AND BITCOIN-RPC-CLIENT
+the version of bitcoin-core downloaded from Ubuntu's snap will create its .bitcoin/bitcoin.conf file inside
+~/snap/bitcoin-core/current instead of ~/ . For the Rpc library to work correctly, the two folders should either be
+copied or hardlinked. Symlinks don't seem to work.
 
-Some hardcoded stuff (especially timeouts and testnet)
+Some hardcoded stuff (especially test timeouts and testnet)
 Some timeouts especially may be very different depending on machine speed
 (especially windows/linux, secp256k1.so/bouncyCastle and host/vm)
+
+Stabilization of JSON state format
+Now that most parts work as intended, it may be time to review and explicitly formulate the structure for the state JSONs.
+Once the BitML compiler is able to produce the state for us, testing all sorts of edge cases would become much simpler.
+
+Support for non-debug mode
+TODO: how are the multiple public keys generated? Is it a standard HD wallet system?
+Once this is clear there will have to be small changes to the usage of Client.identity
 
 Limited non-signature chunk support
 The system allows users to fill in secret chunks manually by specifying their hex string.
