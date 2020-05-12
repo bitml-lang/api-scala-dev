@@ -55,21 +55,19 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     // LE old tx1: 7be5fa01cf6465d71c0335c5f34c53a1d2a7b29d567d442e1e98f0e64e15a06a
     // LE old tx2: 9d26302a3e82b2475a6ba09a0e0e0c6cf4626125ff012232180a41415be1e5a0
 
-    // new Pubkey : 0206a58eef98e30a0abfe0ab0222b7bbc03a280666c5ff7871816419d17ab49e2e
-    // txA0 txid: f9cf7c80881480e0c61921b2c13e0d73c7866e921c19f7e9fd60069cd621d5ae
-    // txFee txid: 6c3f964d2ed60ab2bbf2984dd1eb294bc75d65fd2183b7cf24a29dd646a83eca
-    // LE txid1: aed521d69c0660fde9f7191c926e86c7730d3ec1b22119c6e0801488807ccff9
-    // LE txid2: ca3ea846d69da224cfb78321fd655dc74b29ebd14d98f2bbb20ad62e4d963f6c
+    //NEW NEW pubkey: 03a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5
+    //NEW LE TxA0: 69ab6207c584b66c64cd403ad63219f7da7908dca533594d0945af646c41e662
+    //NEW LE TxFee: 030cd15dc8db5d01c664fcc9cb7a6462f3cad3624906d10397d217001e15a903
 
-    val newTinit = Transaction.read("0200000002aed521d69c0660fde9f7191c926e86c7730d3ec1b22119c6e0801488807ccff9000000002300210206a58eef98e30a0abfe0ab0222b7bbc03a280666c5ff7871816419d17ab49e2effffffffca3ea846d69da224cfb78321fd655dc74b29ebd14d98f2bbb20ad62e4d963f6c010000002300210206a58eef98e30a0abfe0ab0222b7bbc03a280666c5ff7871816419d17ab49e2effffffff01b15310000000000017a9147a06737efe61a6d916abdc59b7c099ae570c39ca8700000000")
+    val newTinit = Transaction.read("020000000269ab6207c584b66c64cd403ad63219f7da7908dca533594d0945af646c41e6620000000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffff030cd15dc8db5d01c664fcc9cb7a6462f3cad3624906d10397d217001e15a9030100000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffff01b15310000000000017a9147a06737efe61a6d916abdc59b7c099ae570c39ca8700000000")
     txdb.save("Tinit", newTinit)
 
-    val a_priv = PrivateKey.fromBase58("cVSavmrF5vGiym1yjoX8h2eMCgGMVPMbpR2HbEXBZYA8H6vS2LLt", Base58.Prefix.SecretKeyTestnet)._1
+    val a_priv = PrivateKey.fromBase58("cVKvdCzgFKF5F2EYn64ekMYVV3Qn1AuWGf763tCMmV1QLi4wqM8R", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
     println(a_pub)
     val a_p = Participant("A", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
     println(Base58Check.encode(Base58.Prefix.ScriptAddressTestnet, a_pub.hash160))
-    /*
+
     val b_pub = PublicKey(ByteVector.fromValidHex("03859a0f601cf485a72ec097fddd798c694b0257f69f0229506f8ea923bc600c5e"))
     val b_p = Participant("B", List(b_pub), Address("akka", "test", "127.0.0.1", 25001))
 
@@ -108,7 +106,7 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     // AFter letting A initialize, see if it can assemble Tinit on its own
     Thread.sleep(2000)
     implicit val timeout: Timeout = 5 seconds
-    val future3 = alice ? TryAssemble("Tinit")
+    val future3 = alice ? TryAssemble("Tinit", autoPublish = true)
     val res3 = Await.result(future3, timeout.duration).asInstanceOf[AssembledTx].serializedTx
     // The node has produced a transaction.
     assert(res3.length != 0)
@@ -119,6 +117,6 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
 
 
     alice ! StopListening()
-     */
+
   }
 }
