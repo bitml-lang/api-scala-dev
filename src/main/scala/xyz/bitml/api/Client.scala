@@ -169,7 +169,7 @@ case class Client() extends Actor with LazyLogging{
         val addedTx = rpc.sendRawTransaction(assembled.toString())
         logger.info("Sent raw transaction, txid %s" format (addedTx))
       } catch {
-        case x : BitcoinRPCException => logger.error("Failed to publish tc automatically (%s)" format x.getRPCError.getMessage )
+        case x : BitcoinRPCException => logger.error("Failed to publish tx automatically (%s)" format x.getRPCError.getMessage )
       }
 
     }
