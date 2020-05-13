@@ -125,10 +125,10 @@ class SegwitConverter extends LazyLogging{
           // Edit and save referenced Transaction with converted pubkeyscript
           val newPrev = switchOutput(prevTx.get, cp.txIn(i._1).outPoint.index.toInt, pks)
           txdb.save(prevStr, newPrev)
-        } else {
+        } else if (m._1 != "Tinit"){
           // There is only one situation in which we'd like to switch only the input, and that's Tinit inputs.
           // Anything else is almost certainly an error and should at least be logged.
-          logger.error("Transaction %s modified without control of output" format (m._1))
+          logger.warn("Transaction %s modified without control of output" format (m._1))
         }
         // Refresh cp so that we receive the txdb txid updates.
         cp = Transaction.read(Transaction.write(txdb.fetch(m._1).get).toHex)

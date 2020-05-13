@@ -107,7 +107,7 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     // AFter letting A initialize, see if it can assemble Tinit on its own
     Thread.sleep(2000)
     implicit val timeout: Timeout = 5 seconds
-    val future3 = alice ? TryAssemble("Tinit", autoPublish = true)
+    val future3 = alice ? TryAssemble("Tinit", autoPublish = false)
     val res3 = Await.result(future3, timeout.duration).asInstanceOf[AssembledTx].serializedTx
     // The node has produced a transaction.
     assert(res3.length != 0)
