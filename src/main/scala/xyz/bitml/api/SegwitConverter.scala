@@ -61,9 +61,9 @@ class SegwitConverter extends LazyLogging{
     var pubKeyScript = ByteVector.empty
     if (isP2SH) {
       val actualScript = wit.stack.last
-      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(actualScript)) :: OP_EQUAL :: Nil)
       val content = Script.write(OP_0 :: OP_PUSHDATA(Crypto.hash256(actualScript)) :: Nil)
       newSig = Script.write(OP_PUSHDATA(content) :: Nil)
+      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(content)) :: OP_EQUAL :: Nil)
     }
     else {
       val pk = PublicKey(wit.stack.last)
