@@ -46,13 +46,6 @@ class Example_States extends AnyFunSuite {
     println(stateJson)
   }
 
-  test("Ignore") {
-    //"6b5e9d1a1f2633e617f42327b83f1adba39cc289"
-    val content = Script.write(OP_0 :: OP_PUSHDATA(ByteVector.fromValidHex("cb81559cce55114064bd728344a0567ca4215dbc")) :: Nil)
-    val newSig = Script.write(OP_PUSHDATA(content) :: Nil)
-    println(Crypto.hash160(content))
-  }
-
   test("Two player lottery: Blank state, B view and A view") {
     val a_priv = PrivateKey.fromBase58("cSthBXr8YQAexpKeh22LB9PdextVE1UJeahmyns5LzcmMDSy59L4", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
