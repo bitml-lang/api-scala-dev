@@ -69,7 +69,7 @@ class SegwitConverter extends LazyLogging{
       val pk = PublicKey(wit.stack.last)
       val content = Script.write(OP_0 :: OP_PUSHDATA(pk.hash160) :: Nil)
       newSig = Script.write(OP_PUSHDATA(content) :: Nil)
-      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(newSig)) :: OP_EQUAL :: Nil)
+      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(content)) :: OP_EQUAL :: Nil)
     }
 
     val resTx = tx.updateSigScript(index, newSig).updateWitness(index, wit)

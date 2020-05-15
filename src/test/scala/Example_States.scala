@@ -1,6 +1,6 @@
 import akka.actor.Address
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
-import fr.acinq.bitcoin.{Base58, Satoshi, Transaction}
+import fr.acinq.bitcoin.{Base58, Crypto, OP_0, OP_PUSHDATA, Satoshi, Script, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
 import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, Participant, TxEntry}
@@ -44,6 +44,13 @@ class Example_States extends AnyFunSuite {
     val initialState = State(partdb, txdb, metadb)
     val stateJson = new Serializer().prettyPrintState(initialState)
     println(stateJson)
+  }
+
+  test("Ignore") {
+    //"6b5e9d1a1f2633e617f42327b83f1adba39cc289"
+    val content = Script.write(OP_0 :: OP_PUSHDATA(ByteVector.fromValidHex("cb81559cce55114064bd728344a0567ca4215dbc")) :: Nil)
+    val newSig = Script.write(OP_PUSHDATA(content) :: Nil)
+    println(Crypto.hash160(content))
   }
 
   test("Two player lottery: Blank state, B view and A view") {
