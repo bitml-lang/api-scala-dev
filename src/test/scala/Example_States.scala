@@ -3,6 +3,7 @@ import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
 import fr.acinq.bitcoin.{Base58, Crypto, OP_0, OP_PUSHDATA, Satoshi, Script, Transaction}
 import org.scalatest.funsuite.AnyFunSuite
 import scodec.bits.ByteVector
+import wf.bitcoin.javabitcoindrpcclient.BitcoinJSONRPCClient
 import xyz.bitml.api.{ChunkEntry, ChunkPrivacy, ChunkType, IndexEntry, Participant, TxEntry}
 import xyz.bitml.api.persistence.{MetaStorage, ParticipantStorage, State, TxStorage}
 import xyz.bitml.api.serialization.Serializer

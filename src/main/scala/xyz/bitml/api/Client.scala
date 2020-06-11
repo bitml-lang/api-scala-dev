@@ -9,7 +9,7 @@ import fr.acinq.bitcoin.Crypto.PrivateKey
 import scodec.bits.ByteVector
 import wf.bitcoin.javabitcoindrpcclient.{BitcoinJSONRPCClient, BitcoinRPCException}
 import xyz.bitml.api.ChunkPrivacy.ChunkPrivacy
-import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, Authorize, CurrentState, DumpState, Init, Internal, Listen, Node, PreInit, Query, StopListening, TryAssemble}
+import xyz.bitml.api.messaging.{AskForSigs, AssembledTx, Authorize, CurrentState, DumpState, Init, Internal, Listen, Node, PreInit, Query, SearchTx, StopListening, TryAssemble}
 import xyz.bitml.api.persistence.State
 import xyz.bitml.api.serialization.Serializer
 
@@ -35,6 +35,7 @@ case class Client() extends Actor with LazyLogging{
     case AskForSigs(t) => retrieveSigs(t)
     case Authorize(t) => authorize(t)
     case DumpState() => sender() ! CurrentState(new Serializer(ChunkPrivacy.PRIVATE).prettyPrintState(state))
+    case SearchTx(t) => sender() ! searchRpcTx(t)
     case _ => logger.error("Unexpected event type")
   }
 
@@ -177,6 +178,17 @@ case class Client() extends Actor with LazyLogging{
     logger.debug("Assembled transaction %s into %s" format (txName, assembled.toString()))
 
     AssembledTx(txName, assembled.toString())
+  }
+
+  def searchRpcTx(txName: String): AssembledTx ={
+    val txidSearch = state.txdb.fetch(txName).get.txid
+    try {
+      val publishedTx = rpc.getTransaction(txidSearch.toHex)
+      return AssembledTx(txName, publishedTx.toString)
+    } catch {
+      case x : BitcoinRPCException => logger.error("Failed RPC query to retrieve tx (%s)" format x.getRPCError.getMessage )
+    }
+    AssembledTx(txName, "")
   }
 
   // We won't release our TInit signature until all chunks marked with PUBLIC have been shared with us.

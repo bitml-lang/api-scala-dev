@@ -22,6 +22,7 @@ case class DumpState() extends Internal
 
 case class TryAssemble(txName: String, autoPublish : Boolean = false) extends Internal
 case class AskForSigs(txName: String) extends Internal
+case class SearchTx(txName: String) extends Internal
 
 case class PreInit() extends Internal
 case class Authorize(txName: String) extends Internal
