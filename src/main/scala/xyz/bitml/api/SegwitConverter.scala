@@ -56,20 +56,20 @@ class SegwitConverter extends LazyLogging{
     val wit = convertRedeem(ss)
 
     // Produce the corresponding pubKeyScript
-    // We are making P2SH/P2WSH and P2SH/P2WPKH now. TODO: TEST TEST TEST
+    // We are making native WPKH/WSH.
     var newSig : ByteVector = ByteVector.empty
     var pubKeyScript = ByteVector.empty
     if (isP2SH) {
       val actualScript = wit.stack.last
       val content = Script.write(OP_0 :: OP_PUSHDATA(Crypto.hash256(actualScript)) :: Nil)
-      newSig = Script.write(OP_PUSHDATA(content) :: Nil)
-      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(content)) :: OP_EQUAL :: Nil)
+      newSig = ByteVector.empty
+      pubKeyScript = content
     }
     else {
       val pk = PublicKey(wit.stack.last)
       val content = Script.write(OP_0 :: OP_PUSHDATA(pk.hash160) :: Nil)
-      newSig = Script.write(OP_PUSHDATA(content) :: Nil)
-      pubKeyScript = Script.write(OP_HASH160 :: OP_PUSHDATA(Crypto.hash160(content)) :: OP_EQUAL :: Nil)
+      newSig = ByteVector.empty
+      pubKeyScript = content
     }
 
     val resTx = tx.updateSigScript(index, newSig).updateWitness(index, wit)
