@@ -1,7 +1,7 @@
 import akka.actor.{ActorSystem, Address, CoordinatedShutdown, Props}
 import akka.util.Timeout
 import fr.acinq.bitcoin.Crypto.{PrivateKey, PublicKey}
-import fr.acinq.bitcoin.{Base58, Base58Check, Crypto, OP_0, OP_PUSHDATA, Satoshi, Script, Transaction}
+import fr.acinq.bitcoin.{Base58, Base58Check, Bech32, Crypto, OP_0, OP_PUSHDATA, Satoshi, Script, Transaction}
 import akka.pattern.ask
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
@@ -43,9 +43,11 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     val a_priv = PrivateKey.fromBase58("cVKvdCzgFKF5F2EYn64ekMYVV3Qn1AuWGf763tCMmV1QLi4wqM8R", Base58.Prefix.SecretKeyTestnet)._1
     val a_pub = a_priv.publicKey
     println(a_pub)
+    println(Crypto.hash160(a_pub.value))
 
-    // Build the necessary P2SH address.
-    println(Base58Check.encode(Base58.Prefix.ScriptAddressTestnet, Crypto.hash160(Script.write(OP_0 :: OP_PUSHDATA(a_pub.hash160)  :: Nil))))
+    // Build the necessary P2WPKH address
+    println(Bech32.encodeWitnessAddress("bcrt",0,Crypto.hash160(a_pub.value)))
+
 
     // Outside the test, send 0.01 and 0.001 BTC to the address above.
 
@@ -61,10 +63,13 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     // LE old tx1: 7be5fa01cf6465d71c0335c5f34c53a1d2a7b29d567d442e1e98f0e64e15a06a
     // LE old tx2: 9d26302a3e82b2475a6ba09a0e0e0c6cf4626125ff012232180a41415be1e5a0
 
-    //NEW NEW pubkey: 03a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5
-    //NEW LE TxA0: f02c9c2420ff08e0cad79634e8e411fe630bba5b56628ceae5952f51afa77ede1//NEW LE TxFee: 1d7c5e6e95e2d35d10ddfa4366694ba9d74f43b6e6365c9509f8b20418196bfd
+    // NEW pubkey: 03a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5
+    // tx1: f1f659aa977f4ed5a48477b34aab8b0a40ddbab80ece03e7d67e0e3c2b3bc148
+    // tx2: e55ce49e4b8792f097a7fbd3991fff58f2292155c061181206af8c6b75e241ef
+    // le tx1 : 48c13b2b3c0e7ed6e703ce0eb8badd400a8bab4ab37784a4d54e7f97aa59f6f1 vout = 0
+    // le tx2 : ef41e2756b8caf06121861c0552129f258ff1f99d3fba797f092874b9ee45ce5 vout = 0
 
-    val newTinit = Transaction.read("0200000002f02c9c2420ff08e0cad79634e8e411fe630bba5b56628ceae5952f51afa77ede0100000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffff1d7c5e6e95e2d35d10ddfa4366694ba9d74f43b6e6365c9509f8b20418196bfd0000000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffff01b15310000000000017a9147a06737efe61a6d916abdc59b7c099ae570c39ca8700000000")
+    val newTinit = Transaction.read("020000000248c13b2b3c0e7ed6e703ce0eb8badd400a8bab4ab37784a4d54e7f97aa59f6f10000000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffffef41e2756b8caf06121861c0552129f258ff1f99d3fba797f092874b9ee45ce50000000023002103a0fb3a0a175fa64518762a46d07d1261d66b89d455145a0ec830199420402bd5ffffffff01b15310000000000017a9147a06737efe61a6d916abdc59b7c099ae570c39ca8700000000")
     txdb.save("Tinit", newTinit)
 
     val a_p = Participant("A", List(a_pub), Address("akka", "test", "127.0.0.1", 25000))
@@ -107,7 +112,7 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
     // AFter letting A initialize, see if it can assemble Tinit on its own
     Thread.sleep(2000)
     implicit val timeout: Timeout = 5 seconds
-    val future3 = alice ? TryAssemble("Tinit", autoPublish = false)
+    val future3 = alice ? TryAssemble("Tinit", autoPublish = true)
     val res3 = Await.result(future3, timeout.duration).asInstanceOf[AssembledTx].serializedTx
     // The node has produced a transaction.
     assert(res3.length != 0)
