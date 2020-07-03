@@ -61,6 +61,7 @@ class Signer extends LazyLogging{
 
   // Generate signature from "dummy" P2WPKH redeem script. Practically identical, except for the SigVersion flag.
   def signP2WPKH(priv : PrivateKey, toSign : Transaction, inputIndex : Int, amt : Satoshi) : ByteVector = {
+
     Transaction.signInput(toSign, inputIndex, genP2PKHDummy(priv.publicKey), bitcoin.SIGHASH_ALL, amt, SigVersion.SIGVERSION_WITNESS_V0, priv)
   }
 
