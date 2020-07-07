@@ -183,9 +183,9 @@ case class Client() extends Actor with LazyLogging{
   def searchRpcTx(txName: String): AssembledTx ={
     val txidSearch = state.txdb.fetch(txName).get.txid
     try {
-      val publishedTx = rpc.getTransaction(txidSearch.toHex)
-      logger.info("Found transaction, tx %s" format (publishedTx.toString))
-      return AssembledTx(txName, publishedTx.toString)
+      val publishedTx = rpc.getRawTransactionHex(txidSearch.toHex)
+      logger.info("Found transaction, tx %s" format (publishedTx))
+      return AssembledTx(txName, publishedTx)
     } catch {
       case x : BitcoinRPCException => logger.error("Failed RPC query to retrieve tx (%s)" format x.getRPCError.getMessage )
     }

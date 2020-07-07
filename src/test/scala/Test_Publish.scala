@@ -120,6 +120,7 @@ class Test_Publish extends AnyFunSuite with BeforeAndAfterAll{
 
     println(Transaction.read(res3).txid)
     println(Transaction.read(res3).txIn(0).witness)
+    println(res3)
 
 
     alice ! StopListening()
